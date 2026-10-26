@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "TP React Native",
+    "slug": "tp-react-native",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": { "supportsTablet": true }
+  }
+}
