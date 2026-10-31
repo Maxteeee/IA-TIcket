@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createApiClient } from '../src/services/api.client.js';
 import { createCatalogService, eventFromDto } from '../src/services/catalog.service.js';
+import { money, rating } from '../src/utils/mockPresentation.js';
 
 const event = () => ({
   id: 'evento-api', nombre: 'Concierto', descripcion: 'Música en vivo',
@@ -23,10 +24,10 @@ test('C3: envía texto y categoría como filtros HTTP, preservando caracteres es
   assert.equal(url.pathname, '/eventos');
   assert.equal(url.searchParams.get('q'), 'música + teatro & amigos');
   assert.equal(url.searchParams.get('categoriaId'), 'categoria & 1');
-  assert.equal(url.searchParams.has('orden'), false);
+  assert.equal(url.searchParams.get('orden'), 'fecha');
   assert.equal(calls[0].options.signal, controller.signal);
   await service.getEvents({ search: '  ', category: 'Todos' });
-  assert.equal(calls[1].path, '/eventos');
+  assert.equal(calls[1].path, '/eventos?orden=fecha');
 });
 
 test('C3: transforma los DTOs del servidor sin depender de nombres ni IDs de la maqueta', () => {
@@ -108,4 +109,45 @@ test('C3: el timeout aborta la solicitud y permite reintentar con el mismo clien
     fetchImpl: (...args) => ++attempts === 1 ? delayedFetch(...args) : Promise.resolve(response([])) });
   await assert.rejects(client.get('/eventos'), { code: 'TIMEOUT' });
   assert.deepEqual(await client.get('/eventos'), []);
+});
+
+test('C11: envía el criterio junto al texto y categoría y conserva el orden recibido del servidor', async () => {
+  const calls = [];
+  const service = createCatalogService({ get: async (path) => {
+    calls.push(path);
+    return [{ ...event(), id: 'z' }, { ...event(), id: 'a' }];
+  } });
+  for (const sort of ['precio', 'fecha', 'puntaje']) {
+    const result = await service.getEvents({ search: 'Música & amigos', category: 'categoria-real', sort });
+    const query = new URL(calls.at(-1), 'http://local').searchParams;
+    assert.equal(query.get('orden'), sort);
+    assert.equal(query.get('q'), 'Música & amigos');
+    assert.equal(query.get('categoriaId'), 'categoria-real');
+    assert.deepEqual(result.map((item) => item.id), ['z', 'a']);
+  }
+});
+
+test('C11: distingue promedio cero de ausencia y conserva puntaje/cantidad sin inventar reseñas', () => {
+  for (const [puntaje, cantidadResenias] of [[0, 1], [4.5, 2], [null, 0]]) {
+    const dto = event();
+    Object.assign(dto.organizador, { puntaje, cantidadResenias });
+    const organizer = eventFromDto(dto).organizador;
+    assert.equal(rating(organizer), puntaje);
+    assert.equal(organizer.cantidadResenias, cantidadResenias);
+    assert.deepEqual(organizer.resenias, []);
+  }
+  for (const reputation of [{ puntaje: 6, cantidadResenias: 1 }, { puntaje: 0, cantidadResenias: 0 },
+    { puntaje: null, cantidadResenias: 2 }, { puntaje: 4, cantidadResenias: -1 }]) {
+    const dto = event();
+    Object.assign(dto.organizador, reputation);
+    assert.throws(() => eventFromDto(dto), { code: 'INVALID_RESPONSE' });
+  }
+  assert.equal(rating({ resenias: [{ puntuacion: 4 }, { puntuacion: 5 }] }), 4.5);
+});
+
+test('C11: los precios muestran centavos para distinguir importes próximos al ordenar', () => {
+  assert.equal(money(10.25), '$10,25');
+  assert.equal(money(10.5), '$10,5');
+  assert.equal(money(5000), '$5.000');
+  assert.equal(money(0), '$0');
 });

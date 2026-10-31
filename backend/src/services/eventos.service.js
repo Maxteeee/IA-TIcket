@@ -6,6 +6,10 @@ import { actor, authorize, conflict, date, fields, normalize, number, required, 
 export function createEventosService(repositories, { now }) {
   const { eventos, categorias, compras, resenias, usuarios } = repositories;
   const get = (id) => required(eventos, id, 'Evento');
+  const reputation = (organizador) => {
+    const recibidas = resenias.findByOrganizador(organizador);
+    return { puntaje: organizador.obtenerPuntaje(recibidas), cantidadResenias: recibidas.length };
+  };
   const own = (id, actorId) => {
     const evento = get(id);
     authorize(evento.organizador === actor(repositories, actorId), 'Solo el organizador puede gestionar este evento');
@@ -60,6 +64,7 @@ export function createEventosService(repositories, { now }) {
 
   return {
     get,
+    getReputation: (evento) => reputation(evento.organizador),
     list(query = {}) {
       fields(query, ['q', 'categoriaId', 'organizadorId', 'orden', 'incluirPasados']);
       const q = query.q === undefined ? '' : normalize(text(query.q, 'q', 200, true));
@@ -71,8 +76,7 @@ export function createEventosService(repositories, { now }) {
       const categoria = query.categoriaId === undefined ? null : required(categorias, query.categoriaId, 'Categoría');
       const organizador = query.organizadorId === undefined ? null : required(usuarios, query.organizadorId, 'Usuario');
       const ahora = now();
-      const reviews = resenias.findAll();
-      const puntajes = new Map(usuarios.findAll().map((usuario) => [usuario, usuario.obtenerPuntaje(reviews)]));
+      const puntajes = new Map(usuarios.findAll().map((usuario) => [usuario, reputation(usuario).puntaje]));
       return eventos.findAll().filter((evento) => (query.incluirPasados === 'true' || evento.fecha > ahora)
         && (!categoria || evento.categoria === categoria)
         && (!organizador || evento.organizador === organizador)

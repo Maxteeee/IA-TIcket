@@ -1,11 +1,12 @@
 import { eventoDto, reseniaDto, tipoEntradaDto } from '../http/presenters.js';
 
 export function createEventosController(service, { now }) {
+  const present = (evento) => eventoDto(evento, now(), service.getReputation(evento));
   return {
-    list: (req, res) => res.json(service.list(req.query).map((evento) => eventoDto(evento, now()))),
-    get: (req, res) => res.json(eventoDto(service.get(req.params.id), now())),
-    create: (req, res) => res.status(201).json(eventoDto(service.create(req.body, req.get('X-Usuario-Id')), now())),
-    update: (req, res) => res.json(eventoDto(service.update(req.params.id, req.body, req.get('X-Usuario-Id')), now())),
+    list: (req, res) => res.json(service.list(req.query).map(present)),
+    get: (req, res) => res.json(present(service.get(req.params.id))),
+    create: (req, res) => res.status(201).json(present(service.create(req.body, req.get('X-Usuario-Id')))),
+    update: (req, res) => res.json(present(service.update(req.params.id, req.body, req.get('X-Usuario-Id')))),
     delete(req, res) {
       service.delete(req.params.id, req.get('X-Usuario-Id'));
       res.status(204).end();

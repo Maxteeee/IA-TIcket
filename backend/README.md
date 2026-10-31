@@ -1,14 +1,14 @@
 # Backend de entradas
 
-API Express en JavaScript, con almacenamiento en memoria. Desde la raíz: `npm install`, `npm run backend`. Las colecciones comienzan vacías y se pierden al reiniciar el proceso. El frontend ya consulta esta API para C3 (catálogo, búsqueda, categorías, detalle); los demás recorridos conservan la maqueta local.
+API Express en JavaScript, con almacenamiento en memoria. Desde la raíz: `npm install`, `npm run backend`. Las colecciones comienzan vacías y se pierden al reiniciar el proceso. El frontend ya consulta esta API para C3/C11 (catálogo, búsqueda, categorías, ordenamiento y detalle); los demás recorridos conservan la maqueta local.
 
-## Catálogo de prueba para C3
+## Catálogo de prueba para C3/C11
 
 `npm run backend:demo` desde la raíz inicia el servidor con categorías y eventos de prueba del propio backend. También puede activarse con `SEED_DEMO=true` en backend/.env. El arranque normal sigue vacío por defecto; createApp no incorpora datos implícitos y las pruebas conservan instancias aisladas.
 
-`src/data/demo.js` carga cinco categorías y seis eventos (cinco futuros y uno pasado), con fechas relativas y tipos de entrada. Usa IDs estables, conserva referencias canónicas y no sobrescribe registros existentes. Todos los datos siguen siendo temporales en memoria. No usa fixtures del frontend ni incorpora autenticación, pagos o creación de eventos desde la app (C4 sigue pendiente de integración).
+`src/data/demo.js` carga cinco categorías y siete eventos (cinco futuros y dos pasados), con fechas relativas y tipos de entrada. Usa IDs estables, conserva referencias canónicas y no sobrescribe registros existentes. Todos los datos siguen siendo temporales en memoria. Incluye tres organizadores: Equipo Encuentro con promedio 4,5 de dos reseñas; Compañía Umbral con una reseña de 0; Red Abierta sin reseñas. Las tres reseñas históricas se vinculan con compras utilizadas de los eventos pasados; permiten probar C11 sin integrar todavía C9. No usa fixtures del frontend ni incorpora autenticación, pagos o creación de eventos desde la app (C4 sigue pendiente de integración).
 
-El listado y el detalle de eventos agregan resúmenes `categoria: {id, nombre, descripcion}` y `organizador: {id, nombre, apellido}` a sus DTOs, conservando `categoriaId` y `organizadorId`. Así la pantalla muestra nombres reales sin consultar todos los usuarios ni inventar asociaciones por nombre.
+El listado y el detalle de eventos agregan resúmenes `categoria: {id, nombre, descripcion}` y `organizador: {id, nombre, apellido, puntaje, cantidadResenias}` a sus DTOs, conservando `categoriaId` y `organizadorId`. Así la pantalla muestra nombres reales sin consultar todos los usuarios ni inventar asociaciones por nombre. `puntaje` es el promedio de todas las reseñas recibidas por ese organizador, o null si no tiene; `cantidadResenias` es el conteo real. El servicio utiliza la misma regla para ordenar y para construir estos datos, sin almacenar un promedio que pueda quedar desactualizado.
 
 ## Organización y análisis del dominio
 
@@ -133,7 +133,7 @@ Cambio de estado, con `X-Usuario-Id` del organizador: `{"estado":"CONFIRMADA"}` 
 
 La reserva en pendientes, el circuito manual, `fechaFin`, los redondeos y desempates son elecciones de esta implementación, diferenciadas de las decisiones previas confirmadas por el usuario. La consulta sobre el momento de descontar cupo queda abierta a su respuesta.
 
-**Pendientes expresamente conservados:** cancelación/reembolso y devolución/expiración de reservas. No se expone borrado de compras ni edición libre de cantidad, total o asociaciones, porque eluden esas reglas y destruyen trazabilidad. Los estados `CANCELADA` y `REEMBOLSADA` siguen en el enum para el dominio, pero la API no los genera todavía. Las reservas pendientes no caducan por ahora. Tampoco se implementaron pagos, autenticación, almacenamiento persistente ni integración de los demás flujos de la maqueta; C3 sí consumen la API.
+**Pendientes expresamente conservados:** cancelación/reembolso y devolución/expiración de reservas. No se expone borrado de compras ni edición libre de cantidad, total o asociaciones, porque eluden esas reglas y destruyen trazabilidad. Los estados `CANCELADA` y `REEMBOLSADA` siguen en el enum para el dominio, pero la API no los genera todavía. Las reservas pendientes no caducan por ahora. Tampoco se implementaron pagos, autenticación, almacenamiento persistente ni integración de los demás flujos de la maqueta; C3/C11 sí consumen la API.
 
 ## Verificación
 
@@ -141,4 +141,4 @@ Desde la raíz: `npm test`. Se usan `node:test`, `node:assert/strict` y `fetch`,
 
 La cobertura incluye dominio previo, aislamiento de repositorios, cupos/precios, transiciones e historial, permisos de chat/ventas, asistencia y reputación, catálogo, favoritos, integridad de borrados, DTOs y dos solicitudes concurrentes por la última entrada. `createApp`, `createRepositories` y `createServices` permiten instancias aisladas y reloj inyectado.
 
-Verificación de C3: 38 pruebas de backend correctas y 24 de frontend, incluida integración HTTP del servicio de catálogo contra Express real. No se probó un celular en esta entrega.
+Verificación de C11: 38 pruebas de backend correctas; la suite de frontend añade integración HTTP del servicio de catálogo contra Express real (31 pruebas de frontend en total), incluidos órdenes por fecha/precio/puntaje, cero frente a null, promedios entre eventos, cambios en reseñas, mínimos de tipos agotados y empates estables. No se probó un celular en esta entrega.

@@ -43,7 +43,8 @@ export function ScreenHeader({ title, subtitle, onBack, action }) {
 
 export function Rating({ organizer, light = false }) {
   const value = rating(organizer);
-  return <View style={[ui.row, { gap: 4 }]}><Icon name="star" size={13} color={light ? colors.lime : colors.primary} /><Text style={{ fontSize: 12, fontWeight: '700', color: light ? '#fff' : colors.ink }}>{value === null ? 'Sin reseñas' : `${value.toFixed(1).replace('.', ',')} (${organizer.resenias.length})`}</Text></View>;
+  const count = organizer?.cantidadResenias ?? organizer?.resenias?.length ?? 0;
+  return <View accessibilityLabel={value === null ? 'Organizador sin reseñas' : `Puntaje del organizador: ${value.toFixed(1)} de 5, ${count} reseñas`} style={[ui.row, { gap: 4 }]}><Icon name="star" size={13} color={light ? colors.lime : colors.primary} /><Text style={{ fontSize: 12, fontWeight: '700', color: light ? '#fff' : colors.ink }}>{value === null ? 'Sin reseñas' : `${value.toFixed(1).replace('.', ',')} (${count})`}</Text></View>;
 }
 
 export function StatusBadge({ status }) {

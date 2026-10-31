@@ -1,5 +1,5 @@
 export function money(value) {
-  return `$${Math.round(value).toLocaleString('es-AR')}`;
+  return `$${value.toLocaleString('es-AR', { maximumFractionDigits: 2 })}`;
 }
 
 export function priceRange(event) {
@@ -8,6 +8,7 @@ export function priceRange(event) {
 }
 
 export function rating(organizer) {
+  if (organizer && Object.hasOwn(organizer, 'puntaje')) return organizer.puntaje;
   const reviews = organizer?.resenias ?? [];
   return reviews.length ? reviews.reduce((total, review) => total + review.puntuacion, 0) / reviews.length : null;
 }

@@ -12,13 +12,21 @@ export function eventFromDto(dto) {
       || !Number.isFinite(ticket.precio) || ticket.precio < 0 || !Number.isSafeInteger(ticket.cupo) || ticket.cupo < 0)) {
     throw invalidResponse();
   }
+  const puntaje = dto.organizador.puntaje ?? null;
+  const cantidadResenias = dto.organizador.cantidadResenias ?? 0;
+  if (!Number.isSafeInteger(cantidadResenias) || cantidadResenias < 0
+    || (puntaje === null ? cantidadResenias !== 0
+      : !Number.isFinite(puntaje) || puntaje < 0 || puntaje > 5 || cantidadResenias === 0)) {
+    throw invalidResponse();
+  }
   const organizerName = `${dto.organizador.nombre} ${dto.organizador.apellido ?? ''}`.trim();
   return {
     id: dto.id, nombre: dto.nombre, descripcion: dto.descripcion,
     categoriaId: dto.categoriaId, categoria: dto.categoria.nombre,
     organizadorId: dto.organizadorId,
     organizador: { id: dto.organizadorId, nombre: organizerName,
-      initials: organizerName.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase(), resenias: [] },
+      initials: organizerName.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase(),
+      puntaje, cantidadResenias, resenias: [] },
     fecha: dto.fecha, fechaFin: dto.fechaFin, finalizadoDemo: dto.finalizado,
     tiposEntrada: dto.tiposEntrada.map((ticket) => ({ ...ticket })),
     multimedia: [...(dto.multimedia ?? [])],
@@ -36,8 +44,9 @@ export function createCatalogService(client = apiClient) {
       }
       return categories.map(({ id, nombre }) => ({ id, nombre }));
     },
-    async getEvents({ search = '', category = 'Todos' } = {}, options) {
+    async getEvents({ search = '', category = 'Todos', sort = 'fecha' } = {}, options) {
       const query = new URLSearchParams();
+      query.set('orden', sort);
       if (search.trim()) query.set('q', search.trim());
       if (category !== 'Todos') query.set('categoriaId', category);
       const suffix = query.toString();

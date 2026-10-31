@@ -7,6 +7,10 @@ import { seedDemoData } from '../../backend/src/data/demo.js';
 import { createServices } from '../../backend/src/services/index.js';
 import { createApiClient } from '../src/services/api.client.js';
 import { createCatalogService } from '../src/services/catalog.service.js';
+import { Evento } from '../../backend/src/domain/Evento.js';
+import { TipoEntrada } from '../../backend/src/domain/TipoEntrada.js';
+import { Resenia } from '../../backend/src/domain/Resenia.js';
+import { priceRange } from '../src/utils/mockPresentation.js';
 
 async function setup(t, { seeded = true } = {}) {
   const now = () => new Date('2026-11-01T12:00:00Z');
@@ -34,7 +38,8 @@ test('C3 punta a punta: categorías reales y catálogo público sin autenticaci�
   assert.equal(events.length, 5);
   assert.equal(events.some((event) => event.id === 'demo-pasado'), false);
   assert.ok(events.every((event) => categories.some((category) => category.id === event.categoriaId)));
-  assert.ok(events.every((event) => event.organizador.nombre === 'Equipo Encuentro'));
+  assert.equal(events.find((event) => event.id === 'demo-concierto').organizador.nombre, 'Equipo Encuentro');
+  assert.equal(events.find((event) => event.id === 'demo-teatro').organizador.nombre, 'Compañía Umbral');
   assert.ok(s.calls.every(({ options }) => !Object.hasOwn(options.headers, 'X-Usuario-Id')));
   assert.ok(s.calls.every(({ options }) => options.signal instanceof AbortSignal));
 });
@@ -81,4 +86,75 @@ test('C3 punta a punta: servidor vacío devuelve listas vacías y no datos de de
   const s = await setup(t, { seeded: false });
   assert.deepEqual(await s.service.getCategories(), []);
   assert.deepEqual(await s.service.getEvents(), []);
+});
+
+test('C11 punta a punta: ordena por fecha, precio mínimo y promedio, con cero antes de sin reseñas', async (t) => {
+  const s = await setup(t);
+  const byDate = await s.service.getEvents({ sort: 'fecha' });
+  assert.deepEqual(byDate.map((event) => event.id), ['demo-conferencia', 'demo-concierto', 'demo-teatro', 'demo-deporte', 'demo-festival']);
+  const byPrice = await s.service.getEvents({ sort: 'precio' });
+  assert.deepEqual(byPrice.map((event) => event.id), ['demo-deporte', 'demo-conferencia', 'demo-concierto', 'demo-festival', 'demo-teatro']);
+  const byScore = await s.service.getEvents({ sort: 'puntaje' });
+  assert.deepEqual(byScore.map((event) => event.id), ['demo-concierto', 'demo-festival', 'demo-teatro', 'demo-conferencia', 'demo-deporte']);
+  assert.deepEqual(byScore.map((event) => event.organizador.puntaje), [4.5, 4.5, 0, null, null]);
+  assert.deepEqual(byScore.map((event) => event.organizador.cantidadResenias), [2, 2, 1, 0, 0]);
+  const detail = await s.service.getEvent('demo-teatro');
+  assert.equal(detail.organizador.puntaje, 0);
+  assert.equal(detail.organizador.cantidadResenias, 1);
+});
+
+test('C11 punta a punta: ordena por el tipo más barato, incluso agotado, y combina todos los filtros', async (t) => {
+  const s = await setup(t);
+  const draft = { descripcion: 'Oferta especial', categoriaId: 'demo-categoria-1', fecha: '2026-12-01T21:00:00Z' };
+  const expensive = s.services.eventos.create({ ...draft, nombre: 'Oferta estándar',
+    tiposEntrada: [{ nombre: 'General', precio: 10.5, cupo: 10 }] }, 'demo-organizador');
+  const cheap = s.services.eventos.create({ ...draft, nombre: 'Oferta con varios tipos', tiposEntrada: [
+    { nombre: 'General', precio: 10.25, cupo: 0 }, { nombre: 'Preferencial', precio: 900, cupo: 10 },
+  ] }, 'demo-organizador');
+  const filters = { search: 'OFERTA', category: 'demo-categoria-1', sort: 'precio' };
+  const result = await s.service.getEvents(filters);
+  assert.deepEqual(result.map((event) => event.id), [cheap.id, expensive.id]);
+  assert.deepEqual(priceRange(result[0]), { min: 10.25, max: 900 });
+  assert.equal(result[0].tiposEntrada[0].cupo, 0);
+  assert.equal((await s.service.getEvents({ ...filters, category: 'demo-categoria-2' })).length, 0);
+  for (const sort of ['fecha', 'puntaje']) {
+    const changedOrder = await s.service.getEvents({ ...filters, sort });
+    assert.deepEqual(new Set(changedOrder.map((event) => event.id)), new Set([cheap.id, expensive.id]));
+  }
+  await assert.rejects(s.service.getEvents({ sort: 'no-valido' }), { status: 400 });
+});
+
+test('C11 punta a punta: promedia reseñas de todos los eventos del organizador y refleja sus cambios', async (t) => {
+  const s = await setup(t);
+  const base = s.repositories.eventos.findById('demo-pasado');
+  const historical = s.repositories.eventos.save(new Evento({ ...base, id: 'historico-otra-categoria',
+    categoria: s.repositories.categorias.findById('demo-categoria-2'),
+    tiposEntrada: [new TipoEntrada({ nombre: 'General', descripcion: '', precio: 100, cupo: 0 })] }));
+  const extra = s.repositories.resenias.save(new Resenia({ comprador: s.repositories.usuarios.findById('demo-asistente'),
+    evento: historical, detalle: 'Otra experiencia', puntuacion: 0 }));
+  let result = await s.service.getEvents({ search: 'concierto', category: 'demo-categoria-1', sort: 'puntaje' });
+  assert.equal(result[0].organizador.puntaje, 3);
+  assert.equal(result[0].organizador.cantidadResenias, 3);
+  s.services.resenias.update('demo-resenia-2', { puntuacion: 1 }, 'demo-asistente');
+  result = await s.service.getEvents({ sort: 'puntaje' });
+  const organizer = result.find((event) => event.id === 'demo-concierto').organizador;
+  assert.equal(organizer.puntaje, 5 / 3);
+  assert.equal(organizer.cantidadResenias, 3);
+  assert.equal((await s.service.getEvent('demo-concierto')).organizador.puntaje, 5 / 3);
+  s.services.resenias.delete(extra.id, 'demo-asistente');
+  assert.equal((await s.service.getEvent('demo-concierto')).organizador.puntaje, 2.5);
+});
+
+test('C11 punta a punta: los empates se resuelven por fecha y luego ID de forma estable', async (t) => {
+  const s = await setup(t);
+  const base = s.repositories.eventos.findById('demo-concierto');
+  for (const [id, fecha] of [['empate-z', '2026-12-01T21:00:00Z'], ['empate-a', '2026-12-01T21:00:00Z'],
+    ['empate-primero', '2026-11-20T21:00:00Z']]) {
+    s.repositories.eventos.save(new Evento({ ...base, id, nombre: 'Empate', fecha: new Date(fecha), fechaFin: null,
+      tiposEntrada: [new TipoEntrada({ nombre: 'General', descripcion: '', precio: 100, cupo: 1 })] }));
+  }
+  for (const sort of ['fecha', 'precio', 'puntaje']) {
+    const events = await s.service.getEvents({ search: 'Empate', sort });
+    assert.deepEqual(events.map((event) => event.id), ['empate-primero', 'empate-a', 'empate-z']);
+  }
 });

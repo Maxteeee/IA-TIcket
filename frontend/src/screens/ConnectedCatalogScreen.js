@@ -6,6 +6,6 @@ export default function ConnectedCatalogScreen({ filters, onFilters, onOpenEvent
   return <CatalogScreen events={events} organizers={events.map((event) => event.organizador)}
     filters={filters} onFilters={onFilters} onOpenEvent={onOpenEvent}
     availableCategories={[{ id: 'Todos', nombre: 'Todos' }, ...categories]}
-    serverFiltered showSort={false} showRatings={false} loading={loading} error={error}
+    serverFiltered loading={loading} error={error}
     onRetry={reload} onRefresh={reload} />;
 }

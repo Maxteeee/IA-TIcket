@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { catalogService } from '../services/catalog.service.js';
 
-export function useCatalog({ search, category }) {
+export function useCatalog({ search, category, sort = 'fecha' }) {
   const [categories, setCategories] = useState([]);
   const [events, setEvents] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
@@ -28,13 +28,13 @@ export function useCatalog({ search, category }) {
     setEventsError('');
     // Una breve espera evita una solicitud por tecla; la cancelación evita resultados atrasados.
     const timer = setTimeout(() => {
-      catalogService.getEvents({ search, category }, { signal: controller.signal })
+      catalogService.getEvents({ search, category, sort }, { signal: controller.signal })
         .then((result) => { if (!controller.signal.aborted) setEvents(result); })
         .catch((error) => { if (!controller.signal.aborted) setEventsError(error.message); })
         .finally(() => { if (!controller.signal.aborted) setEventsLoading(false); });
     }, search.trim() ? 300 : 0);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [search, category, revision]);
+  }, [search, category, sort, revision]);
 
   return { events, categories, loading: categoriesLoading || eventsLoading,
     error: categoriesError || eventsError, reload: () => setRevision((value) => value + 1) };

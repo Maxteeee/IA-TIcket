@@ -3,7 +3,7 @@ export const usuarioDto = ({ id, nombre, apellido }) => ({ id, nombre, apellido 
 export const categoriaDto = ({ id, nombre, descripcion }) => ({ id, nombre, descripcion });
 export const tipoEntradaDto = ({ id, nombre, descripcion, precio, cupo }) => ({ id, nombre, descripcion, precio, cupo });
 
-export function eventoDto(evento, ahora = new Date()) {
+export function eventoDto(evento, ahora = new Date(), reputacion = { puntaje: null, cantidadResenias: 0 }) {
   return {
     id: evento.id,
     nombre: evento.nombre,
@@ -11,7 +11,7 @@ export function eventoDto(evento, ahora = new Date()) {
     categoriaId: evento.categoria.id,
     organizadorId: evento.organizador.id,
     categoria: categoriaDto(evento.categoria),
-    organizador: usuarioDto(evento.organizador),
+    organizador: { ...usuarioDto(evento.organizador), ...reputacion },
     fecha: evento.fecha.toISOString(),
     fechaFin: evento.fechaFin?.toISOString() ?? null,
     finalizado: evento.haFinalizado(ahora),
