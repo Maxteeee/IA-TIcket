@@ -1,4 +1,5 @@
 import { EstadoCompra } from './EstadoCompra.js';
+import { randomUUID } from 'node:crypto';
 
 export class CambioEstadoCompra {
   /**
@@ -8,11 +9,12 @@ export class CambioEstadoCompra {
    * @param {import('./Usuario.js').Usuario} datos.quien
    * @param {Date} datos.fechaHora
    */
-  constructor({ compra, estado, quien, fechaHora }) {
+  constructor({ id = randomUUID(), compra, estado, quien, fechaHora }) {
     if (!Object.values(EstadoCompra).includes(estado)) {
       throw new TypeError('Estado de compra inválido');
     }
 
+    this.id = id;
     this.compra = compra;
     this.estado = estado;
     this.quien = quien;

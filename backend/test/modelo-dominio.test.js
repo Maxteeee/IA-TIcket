@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Usuario } from '../src/models/Usuario.js';
-import { Categoria } from '../src/models/Categoria.js';
-import { TipoEntrada } from '../src/models/TipoEntrada.js';
-import { Evento } from '../src/models/Evento.js';
-import { Compra } from '../src/models/Compra.js';
-import { EstadoCompra } from '../src/models/EstadoCompra.js';
-import { Mensaje } from '../src/models/Mensaje.js';
-import { Resenia } from '../src/models/Resenia.js';
-import { CambioEstadoCompra } from '../src/models/CambioEstadoCompra.js';
+import { Usuario } from '../src/domain/Usuario.js';
+import { Categoria } from '../src/domain/Categoria.js';
+import { TipoEntrada } from '../src/domain/TipoEntrada.js';
+import { Evento } from '../src/domain/Evento.js';
+import { Compra } from '../src/domain/Compra.js';
+import { EstadoCompra } from '../src/domain/EstadoCompra.js';
+import { Mensaje } from '../src/domain/Mensaje.js';
+import { Resenia } from '../src/domain/Resenia.js';
+import { CambioEstadoCompra } from '../src/domain/CambioEstadoCompra.js';
 
 function crearEscenario() {
   const organizador = new Usuario({ nombre: 'Ana', apellido: 'Pérez' });

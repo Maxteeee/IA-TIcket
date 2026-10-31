@@ -1,5 +1,8 @@
 import { EstadoCompra } from './EstadoCompra.js';
 import { Mensaje } from './Mensaje.js';
+import { randomUUID } from 'node:crypto';
+import { CambioEstadoCompra } from './CambioEstadoCompra.js';
+import { DomainError } from './DomainError.js';
 
 export class Compra {
   /**
@@ -13,7 +16,7 @@ export class Compra {
    * @param {import('./Mensaje.js').Mensaje[]} [datos.mensajes]
    * @param {import('./CambioEstadoCompra.js').CambioEstadoCompra[]} [datos.historial]
    */
-  constructor({ comprador, evento, tipoEntrada, cantidad, total, estado, mensajes = [], historial = [] }) {
+  constructor({ id = randomUUID(), comprador, evento, tipoEntrada, cantidad, total, estado, mensajes = [], historial = [] }) {
     if (!comprador) {
       throw new TypeError('La compra debe tener un comprador');
     }
@@ -23,7 +26,14 @@ export class Compra {
     if (!Object.values(EstadoCompra).includes(estado)) {
       throw new TypeError('Estado de compra inválido');
     }
+    if (!Number.isSafeInteger(cantidad) || cantidad <= 0) {
+      throw new DomainError('La cantidad debe ser un entero positivo');
+    }
+    if (typeof total !== 'number' || !Number.isFinite(total) || total < 0 || total > Number.MAX_SAFE_INTEGER) {
+      throw new DomainError('El total de la compra es inválido');
+    }
 
+    this.id = id;
     this.comprador = comprador;
     this.evento = evento;
     this.tipoEntrada = tipoEntrada;
@@ -68,5 +78,39 @@ export class Compra {
       throw new Error('Solo el comprador y el organizador pueden consultar los mensajes de esta compra');
     }
     return [...this.mensajes];
+  }
+
+  registrarEstado(quien, fechaHora) {
+    this.historial.push(new CambioEstadoCompra({ compra: this, estado: this.estado, quien, fechaHora }));
+  }
+
+  actualizarEstado(estado, quien, fechaHora) {
+    if (!Object.values(EstadoCompra).includes(estado)) {
+      throw new DomainError('Estado de compra inválido');
+    }
+    if (quien !== this.evento.organizador) {
+      throw new DomainError('Solo el organizador puede confirmar o utilizar entradas', 403);
+    }
+    const siguiente = {
+      [EstadoCompra.PENDIENTE]: EstadoCompra.CONFIRMADA,
+      [EstadoCompra.CONFIRMADA]: EstadoCompra.UTILIZADA,
+    };
+    if (siguiente[this.estado] !== estado) {
+      throw new DomainError('Transición de estado no permitida; cancelación y reembolso siguen pendientes de definición', 409);
+    }
+    this.estado = estado;
+    this.registrarEstado(quien, fechaHora);
+  }
+
+  puedeReseniar(usuario, ahora) {
+    return usuario === this.comprador
+      && this.estado === EstadoCompra.UTILIZADA
+      && this.evento.haFinalizado(ahora);
+  }
+
+  diasRestantes(ahora = new Date()) {
+    return this.estado === EstadoCompra.CONFIRMADA
+      ? Math.max(0, Math.ceil((this.evento.fecha - ahora) / 86400000))
+      : null;
   }
 }

@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto';
+import { DomainError } from './DomainError.js';
+
 export class TipoEntrada {
   /**
    * @param {object} datos
@@ -6,7 +9,8 @@ export class TipoEntrada {
    * @param {number} datos.precio
    * @param {number} datos.cupo Cantidad entera de entradas.
    */
-  constructor({ nombre, descripcion, precio, cupo }) {
+  constructor({ id = randomUUID(), nombre, descripcion, precio, cupo }) {
+    this.id = id;
     this.nombre = nombre;
     this.descripcion = descripcion;
     this.precio = precio;
@@ -23,5 +27,10 @@ export class TipoEntrada {
       && cantidad > 0
       && Number.isInteger(this.cupo)
       && cantidad <= this.cupo;
+  }
+
+  reservar(cantidad) {
+    if (!this.hayCupoPara(cantidad)) throw new DomainError('No hay cupo suficiente', 409);
+    this.cupo -= cantidad;
   }
 }

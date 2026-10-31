@@ -9,8 +9,11 @@ Base en JavaScript para desarrollar el trabajo práctico. El frontend es una app
 ├── backend/
 │   ├── src/
 │   │   ├── controllers/       # Reciben solicitudes y devuelven respuestas
+│   │   ├── domain/            # Entidades y reglas de negocio
+│   │   ├── services/          # Casos de uso, contratos y permisos
 │   │   ├── repositories/      # Almacenan y consultan datos en memoria
 │   │   ├── routes/            # Definen los endpoints
+│   │   ├── http/              # DTOs de respuesta sin ciclos
 │   │   ├── app.js            # Configuración de Express
 │   │   └── server.js         # Inicio del servidor y puerto
 │   ├── test/
@@ -32,7 +35,9 @@ Base en JavaScript para desarrollar el trabajo práctico. El frontend es una app
 └── package.json              # Workspaces y comandos comunes
 ```
 
-El ejemplo permite crear y listar elementos para comprobar la comunicación entre ambos módulos. Se puede reemplazar `items` por las entidades del enunciado. Cuando haya reglas de negocio, se puede agregar `backend/src/services/` entre los controladores y los repositorios.
+El backend implementa usuarios, categorías, eventos, compras y reseñas mediante rutas → controladores → servicios → dominio/repositorios. Los tipos de entrada pertenecen al evento; los mensajes e historial, a la compra. El [análisis del dominio y contrato de la API](backend/README.md) explica las operaciones, reglas y límites. Se conserva el ejemplo `items`.
+
+El frontend abre una maqueta navegable con datos locales: todavía no consume esta API. Para recorrerla no hace falta iniciar el backend.
 
 ## Requisitos
 
@@ -53,7 +58,7 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
-La instalación requiere acceso a `registry.npmjs.org`. Al preparar esta estructura, ese acceso falló con `EAI_AGAIN`: las dependencias y el archivo `package-lock.json` quedan pendientes de generar con `npm install`. Una vez generado, conservá el lockfile en Git.
+La instalación requiere acceso a `registry.npmjs.org`. El proyecto incluye `package-lock.json`; conservá sus actualizaciones en Git.
 
 ## Ejecutar el backend
 
@@ -87,7 +92,7 @@ Podés comprobar la conexión abriendo `http://IP_DE_TU_PC:3000/api/health` desd
 
 ## Persistencia en memoria
 
-Los elementos se guardan en un arreglo dentro del proceso de Node.js. Cerrar y abrir la app conserva los datos mientras el backend siga activo. Reiniciar el backend borra todos los datos, incluso los reinicios automáticos de `node --watch` al editar código. No se utiliza una base de datos, archivos ni AsyncStorage.
+Los datos de la API se guardan dentro del proceso de Node.js. Reiniciar el backend borra todos los datos, incluso los reinicios automáticos de `node --watch` al editar código. No se utiliza una base de datos, archivos ni AsyncStorage. La maqueta mantiene su propio estado en React y se reinicia al recargarla.
 
 ## Endpoints de ejemplo
 
@@ -97,7 +102,7 @@ Los elementos se guardan en un arreglo dentro del proceso de Node.js. Cerrar y a
 | GET | `/api/items` | Listar los elementos en memoria |
 | POST | `/api/items` | Crear un elemento con `{"name":"Ejemplo"}` |
 
-El nombre debe tener entre 1 y 100 caracteres. Este ejemplo es una base para adaptar al enunciado, no la implementación completa del TP.
+El nombre del ejemplo debe tener entre 1 y 100 caracteres. Los endpoints del dominio, incluidos compra, ventas, favoritos, chat y reseñas, están documentados en [backend/README.md](backend/README.md). Las operaciones personales utilizan el encabezado de desarrollo `X-Usuario-Id`, sin autenticación real.
 
 ## Verificaciones
 
@@ -106,7 +111,7 @@ npm test
 npm run check --workspace=frontend
 ```
 
-Las pruebas del repositorio usan el runner de Node y se pueden ejecutar sin instalar dependencias. El chequeo de Expo requiere instalar las dependencias y puede consultar la red. La ejecución completa de Express y la app en un celular queda pendiente hasta completar la instalación y configurar la IP.
+Las pruebas usan el runner de Node; las de HTTP requieren Express instalado y abren puertos locales temporales. El chequeo de Expo requiere instalar las dependencias y puede consultar la red. Para conectar el celular a la API hay que configurar una dirección accesible desde su red; el túnel de Expo solo transporta Metro.
 
 ## Cómo se inicializa un proyecto así
 

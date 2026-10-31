@@ -1,4 +1,5 @@
 import { Evento } from './Evento.js';
+import { randomUUID } from 'node:crypto';
 
 export class Usuario {
   /**
@@ -7,7 +8,8 @@ export class Usuario {
    * @param {string} datos.apellido
    * @param {import('./Evento.js').Evento[]} [datos.favoritos]
    */
-  constructor({ nombre, apellido, favoritos = [] }) {
+  constructor({ id = randomUUID(), nombre, apellido, favoritos = [] }) {
+    this.id = id;
     this.nombre = nombre;
     this.apellido = apellido;
     this.favoritos = [];
@@ -49,5 +51,12 @@ export class Usuario {
    */
   obtenerReseniasRecibidas(resenias) {
     return resenias.filter((resenia) => resenia.evento.organizador === this);
+  }
+
+  obtenerPuntaje(resenias) {
+    const recibidas = this.obtenerReseniasRecibidas(resenias);
+    return recibidas.length
+      ? recibidas.reduce((total, resenia) => total + resenia.puntuacion, 0) / recibidas.length
+      : null;
   }
 }
