@@ -7,18 +7,18 @@ import { dateLabel, money, priceRange } from '../utils/mockPresentation';
 import { useMockSession } from '../session/MockSessionProvider';
 import { canPurchase } from '../session/permissions';
 
-export default function EventDetailScreen({ event, organizer, favorite, onFavorite, onBack, onPurchase, onManage }) {
+export default function EventDetailScreen({ event, organizer, favorite, onFavorite, onBack, onPurchase, onManage, purchaseEnabled = true, showReviews = true }) {
   const { session } = useMockSession();
-  const purchaseAllowed = canPurchase(session, event);
+  const purchaseAllowed = purchaseEnabled && canPurchase(session, event);
   const available = event.tiposEntrada.filter((ticket) => ticket.cupo > 0);
-  const [selectedId, setSelectedId] = useState(available[0]?.id);
+  const [selectedId, setSelectedId] = useState(purchaseEnabled ? available[0]?.id : undefined);
   const [quantity, setQuantity] = useState(1);
   const [checkout, setCheckout] = useState(false);
   const selected = available.find((ticket) => ticket.id === selectedId);
   const range = priceRange(event);
 
   return <View style={ui.screen}>
-    <ScreenHeader title="Tu próximo plan" onBack={onBack} action={<IconButton name={favorite ? 'filledHeart' : 'heart'} label={favorite ? 'Quitar de favoritos' : 'Guardar en favoritos'} active={favorite} onPress={onFavorite} />} />
+    <ScreenHeader title="Tu próximo plan" onBack={onBack} action={onFavorite ? <IconButton name={favorite ? 'filledHeart' : 'heart'} label={favorite ? 'Quitar de favoritos' : 'Guardar en favoritos'} active={favorite} onPress={onFavorite} /> : null} />
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
       <View style={{ marginHorizontal: 20, borderRadius: 22, overflow: 'hidden' }}><EventPoster event={event} large /></View>
       <View style={ui.content}>
@@ -26,12 +26,12 @@ export default function EventDetailScreen({ event, organizer, favorite, onFavori
         <View style={{ gap: 10 }}><View style={ui.between}><Text style={ui.eyebrow}>{event.categoria.toUpperCase()}</Text><Text style={ui.caption}>{event.finalizadoDemo ? 'Evento finalizado' : 'Vivilo en persona'}</Text></View><Text style={ui.title}>{event.nombre}</Text><Text style={ui.text}>{event.etiqueta}</Text></View>
         <View style={[ui.card, { flexDirection: 'row', alignItems: 'center', gap: 15 }]}><View style={styles.dateTile}><Text style={styles.dateNumber}>{new Date(event.fecha).getDate()}</Text><Text style={styles.dateMonth}>{new Date(event.fecha).toLocaleDateString('es-AR', { month: 'short' }).replace('.', '').toUpperCase()}</Text></View><View style={{ flex: 1, gap: 5 }}><Text style={ui.label}>{dateLabel(event.fecha, { weekday: 'long' })} · {new Date(event.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} h</Text><Text style={ui.caption}>{event.lugar}</Text></View></View>
         <View style={{ gap: 9 }}><Text style={ui.heading}>El plan</Text><Text style={ui.text}>{event.descripcion}</Text></View>
-        <View style={ui.card}><View style={ui.row}><View style={styles.organizerAvatar}><Text style={{ color: colors.primary, fontWeight: '800' }}>{organizer.initials}</Text></View><View style={{ flex: 1, gap: 5 }}><Text style={ui.caption}>Organiza</Text><Text style={ui.label}>{organizer.nombre}</Text></View><Rating organizer={organizer} /></View></View>
-        <View style={{ gap: 13 }}><View style={ui.between}><Text style={ui.heading}>Elegí cómo vivirlo</Text><Text style={ui.caption}>{event.tiposEntrada.length} opciones</Text></View>
+        <View style={ui.card}><View style={ui.row}><View style={styles.organizerAvatar}><Text style={{ color: colors.primary, fontWeight: '800' }}>{organizer.initials}</Text></View><View style={{ flex: 1, gap: 5 }}><Text style={ui.caption}>Organiza</Text><Text style={ui.label}>{organizer.nombre}</Text></View>{showReviews ? <Rating organizer={organizer} /> : null}</View></View>
+        <View style={{ gap: 13 }}><View style={ui.between}><Text style={ui.heading}>{purchaseEnabled ? 'Elegí cómo vivirlo' : 'Tipos de entrada'}</Text><Text style={ui.caption}>{event.tiposEntrada.length} opciones</Text></View>
           {event.tiposEntrada.map((ticket) => <Pressable key={ticket.id} accessibilityRole="radio" accessibilityState={{ checked: selectedId === ticket.id, disabled: ticket.cupo === 0 || !purchaseAllowed }} disabled={ticket.cupo === 0 || !purchaseAllowed} onPress={() => { setSelectedId(ticket.id); setQuantity(1); }} style={[styles.ticket, selectedId === ticket.id && styles.selectedTicket, ticket.cupo === 0 && { opacity: 0.55 }]}><View style={[styles.radio, selectedId === ticket.id && { borderColor: colors.primary }]}>{selectedId === ticket.id ? <View style={styles.radioCenter} /> : null}</View><View style={{ flex: 1, gap: 4 }}><View style={ui.between}><Text style={ui.label}>{ticket.nombre}</Text><Text style={styles.ticketPrice}>{money(ticket.precio)}</Text></View><Text style={ui.caption}>{ticket.descripcion}</Text><Text style={{ fontSize: 11, color: ticket.cupo > 0 ? colors.success : colors.muted, marginTop: 3 }}>{ticket.cupo > 0 ? `${ticket.cupo} disponibles` : 'Agotadas'}</Text></View></Pressable>)}
           {selected && purchaseAllowed ? <View style={[ui.between, { paddingVertical: 8 }]}><View><Text style={ui.label}>¿Cuántas entradas?</Text><Text style={ui.caption}>El plan es mejor en compañía.</Text></View><View style={[ui.row, { gap: 17 }]}><IconButton name="minus" label="Quitar una entrada" onPress={() => setQuantity(Math.max(1, quantity - 1))} /><Text style={[ui.label, { fontSize: 18 }]}>{quantity}</Text><IconButton name="plus" label="Agregar una entrada" onPress={() => setQuantity(Math.min(selected.cupo, quantity + 1))} /></View></View> : null}
         </View>
-        <View style={{ gap: 14 }}><Text style={ui.heading}>Experiencias que hablan</Text><Text style={ui.caption}>Reseñas de eventos anteriores de {organizer.nombre}.</Text>{organizer.resenias.length ? organizer.resenias.map((review) => <View key={review.id} style={ui.card}><View style={ui.between}><Text style={ui.label}>{review.autor}</Text><Text style={{ color: colors.primary, fontWeight: '700' }}>★ {review.puntuacion}/5</Text></View><Text style={ui.text}>{review.detalle}</Text><Text style={ui.caption}>{review.evento}</Text></View>) : <View style={ui.card}><Text style={ui.label}>Una nueva historia comienza</Text><Text style={ui.text}>Este organizador todavía no tiene reseñas.</Text></View>}</View>
+        {showReviews ? <View style={{ gap: 14 }}><Text style={ui.heading}>Experiencias que hablan</Text><Text style={ui.caption}>Reseñas de eventos anteriores de {organizer.nombre}.</Text>{organizer.resenias.length ? organizer.resenias.map((review) => <View key={review.id} style={ui.card}><View style={ui.between}><Text style={ui.label}>{review.autor}</Text><Text style={{ color: colors.primary, fontWeight: '700' }}>★ {review.puntuacion}/5</Text></View><Text style={ui.text}>{review.detalle}</Text><Text style={ui.caption}>{review.evento}</Text></View>) : <View style={ui.card}><Text style={ui.label}>Una nueva historia comienza</Text><Text style={ui.text}>Este organizador todavía no tiene reseñas.</Text></View>}</View> : null}
       </View>
     </ScrollView>
     {purchaseAllowed ? <View style={styles.footer}><View style={{ flex: 1, gap: 3 }}><Text style={ui.caption}>{selected ? `${quantity} ${quantity === 1 ? 'entrada' : 'entradas'}` : 'Entradas desde'}</Text><Text style={styles.total}>{money(selected ? selected.precio * quantity : range.min)}</Text></View><Button title={selected ? 'Continuar' : 'Agotado'} disabled={!selected} icon="arrow" onPress={() => setCheckout(true)} /></View> : null}

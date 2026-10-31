@@ -9,6 +9,8 @@ import { useMockSession } from './session/MockSessionProvider';
 import { RolUsuario } from './session/roles';
 import { canAccessPurchase, canAccessRoute, canManageEvent, canOrganize, canPurchase, canReviewPurchase, hasRole, selectSessionData } from './session/permissions';
 import CatalogScreen from './screens/CatalogScreen';
+import ConnectedCatalogScreen from './screens/ConnectedCatalogScreen';
+import CatalogEventScreen from './screens/CatalogEventScreen';
 import EventDetailScreen from './screens/EventDetailScreen';
 import PurchasesScreen from './screens/PurchasesScreen';
 import PurchaseDetailScreen from './screens/PurchaseDetailScreen';
@@ -125,6 +127,8 @@ export default function MockApp() {
   let content;
   if (!canAccessRoute(session, route, { events, purchases: allPurchases })) {
     content = <EmptyState title="Esta vista no está disponible" description="Volvé al inicio para continuar con tu perfil activo." action="Ir al inicio" onAction={explore} />;
+  } else if (route?.name === 'catalogEvent') {
+    content = <CatalogEventScreen key={route.eventId} eventId={route.eventId} onBack={back} />;
   } else if (route?.name === 'event') {
     const event = events.find((item) => item.id === route.eventId);
     content = <EventDetailScreen key={event.id} event={event} organizer={organizers.find((item) => item.id === event.organizadorId)} favorite={favoriteIds.includes(event.id)} onFavorite={() => toggleFavorite(event.id)} onBack={back} onPurchase={simulatePurchase} onManage={canManageEvent(session, event) ? () => open('organizerEvent', { eventId: event.id }) : undefined} />;
@@ -141,11 +145,16 @@ export default function MockApp() {
   } else if (route?.name === 'create' || route?.name === 'edit') {
     const event = route.name === 'edit' ? events.find((item) => item.id === route.eventId) : undefined;
     content = <CreateEventScreen event={event} onBack={back} onCreate={event ? (changes) => editEvent(event.id, changes) : createEvent} />;
-  } else if (tab === 'explore' || tab === 'favorites') {
-    const saved = tab === 'favorites';
-    const filters = (saved ? favoriteFiltersByUser : catalogFiltersByUser)[userId] ?? initialFilters;
-    const setFilters = saved ? setFavoriteFiltersByUser : setCatalogFiltersByUser;
-    content = <CatalogScreen key={tab} events={events} organizers={organizers} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} onOpenEvent={(eventId) => open('event', { eventId })} filters={filters} onFilters={(value) => setFilters((current) => ({ ...current, [userId]: value }))} saved={saved} onExplore={explore} />;
+  } else if (tab === 'explore') {
+    content = <ConnectedCatalogScreen filters={catalogFiltersByUser[userId] ?? initialFilters}
+      onFilters={(value) => setCatalogFiltersByUser((current) => ({ ...current, [userId]: value }))}
+      onOpenEvent={(eventId) => open('catalogEvent', { eventId })} />;
+  } else if (tab === 'favorites') {
+    content = <CatalogScreen events={events} organizers={organizers} favoriteIds={favoriteIds}
+      onToggleFavorite={toggleFavorite} onOpenEvent={(eventId) => open('event', { eventId })}
+      filters={favoriteFiltersByUser[userId] ?? initialFilters}
+      onFilters={(value) => setFavoriteFiltersByUser((current) => ({ ...current, [userId]: value }))}
+      saved onExplore={explore} />;
   } else if (tab === 'purchases') {
     content = <PurchasesScreen purchases={purchases} events={events} onOpenPurchase={(id) => open('purchase', { id, role: 'comprador' })} onExplore={explore} />;
   } else if (tab === 'organize' && canOrganize(session)) {

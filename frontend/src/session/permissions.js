@@ -14,6 +14,8 @@ export const canReviewPurchase = (session, purchase, event) => Boolean(event && 
 export function canAccessRoute(session, route, { events, purchases }) {
   if (!session?.usuario?.id) return false;
   if (!route) return true;
+  if (route.name === 'catalogEvent') return hasRole(session, RolUsuario.COMPRADOR)
+    && typeof route.eventId === 'string' && Boolean(route.eventId.trim());
   if (route.name === 'create') return canOrganize(session);
   const event = events.find((item) => item.id === route.eventId);
   if (route.name === 'event') return Boolean(event);

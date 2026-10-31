@@ -34,6 +34,15 @@ test('las respuestas del auth mock no comparten objetos mutables entre perfiles 
   assert.equal(organizer().usuario.nombre, 'Organizador 1');
 });
 
+test('el catálogo conectado admite perfiles compradores y conserva separados los detalles de la maqueta', () => {
+  const destination = { name: 'catalogEvent', eventId: 'id-real-del-backend' };
+  assert.equal(canAccessRoute(buyer(), destination, state()), true);
+  assert.equal(canAccessRoute(organizer(), destination, state()), true);
+  assert.equal(canAccessRoute({ usuario: organizer().usuario, roles: [RolUsuario.ORGANIZADOR] }, destination, state()), false);
+  assert.equal(canAccessRoute(buyer(), { ...destination, eventId: '' }, state()), false);
+  assert.equal(canAccessRoute(buyer(), { name: 'event', eventId: destination.eventId }, state()), false);
+});
+
 test('comprador no crea ni administra eventos y organizador solo administra los propios', () => {
   assert.equal(canAccessRoute(buyer(), { name: 'create' }, state()), false);
   assert.equal(canAccessRoute(organizer(), { name: 'create' }, state()), true);

@@ -1,7 +1,15 @@
 import { networkInterfaces } from 'node:os';
-import app from './app.js';
+import { createApp } from './app.js';
+import { createRepositories } from './repositories/index.js';
+import { seedDemoData } from './data/demo.js';
 
 const port = Number(process.env.PORT || 3000);
+const repositories = createRepositories();
+if (process.argv.includes('--demo') || process.env.SEED_DEMO === 'true') {
+  seedDemoData(repositories);
+  console.log('Catálogo de prueba cargado en memoria');
+}
+const app = createApp({ repositories });
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`API local: http://localhost:${port}/api/health`);

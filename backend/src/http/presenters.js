@@ -10,6 +10,8 @@ export function eventoDto(evento, ahora = new Date()) {
     descripcion: evento.descripcion,
     categoriaId: evento.categoria.id,
     organizadorId: evento.organizador.id,
+    categoria: categoriaDto(evento.categoria),
+    organizador: usuarioDto(evento.organizador),
     fecha: evento.fecha.toISOString(),
     fechaFin: evento.fechaFin?.toISOString() ?? null,
     finalizado: evento.haFinalizado(ahora),

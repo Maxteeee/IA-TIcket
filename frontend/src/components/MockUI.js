@@ -71,12 +71,12 @@ export function EventPoster({ event, large = false, compact = false, style }) {
     <View pointerEvents="none" style={[styles.posterRing, { borderColor: theme.accent, width: large ? 170 : 105, height: large ? 170 : 105, right: large ? -33 : -43, bottom: large ? -40 : -44 }]} />
     <View pointerEvents="none" style={{ position: 'absolute', width: large ? 90 : 54, height: large ? 90 : 54, backgroundColor: theme.accent, opacity: 0.17, right: 20, top: -20, transform: [{ rotate: '25deg' }] }} />
     {!compact ? <Text numberOfLines={1} style={{ color: theme.accent, fontSize: large ? 10 : 7, fontWeight: '700', letterSpacing: 1.7 }}>{theme.kicker}</Text> : null}
-    <Text numberOfLines={2} allowFontScaling={false} style={{ color: theme.accent, fontSize: large ? 51 : compact ? 15 : 28, lineHeight: large ? 50 : compact ? 16 : 28, letterSpacing: -1.5, fontWeight: '900', marginTop: large ? 30 : compact ? 0 : 20 }}>{theme.title}</Text>
+    <Text numberOfLines={2} allowFontScaling={false} style={{ color: theme.accent, fontSize: large ? 51 : compact ? 15 : 28, lineHeight: large ? 50 : compact ? 16 : 28, letterSpacing: -1.5, fontWeight: '900', marginTop: large ? 30 : compact ? 0 : 20 }}>{event.posterTitle ?? theme.title}</Text>
     {!compact ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 'auto' }}><View style={{ width: 15, height: 1, backgroundColor: theme.accent }} /><Text style={{ color: theme.accent, fontSize: 7, letterSpacing: 1.4 }}>AI TICKET IT · {theme.number}</Text></View> : null}
   </View>;
 }
 
-export function EventCard({ event, organizer, favorite, onOpen, onFavorite }) {
+export function EventCard({ event, organizer, favorite, onOpen, onFavorite, showRating = true }) {
   const range = priceRange(event);
   return <View style={styles.eventCard}>
     <Pressable accessibilityRole="button" accessibilityLabel={`Ver ${event.nombre}`} onPress={onOpen}>
@@ -87,10 +87,10 @@ export function EventCard({ event, organizer, favorite, onOpen, onFavorite }) {
         <Text numberOfLines={1} style={[ui.caption, { fontSize: 10 }]}>{event.categoria} · {event.lugar.split(' · ')[0]}</Text>
         <View style={ui.divider} />
         <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={{ fontSize: 13, fontWeight: '800', color: colors.ink }}>{money(range.min)}{range.max > range.min ? ` – ${money(range.max)}` : ''}</Text>
-        <Rating organizer={organizer} />
+        {showRating ? <Rating organizer={organizer} /> : null}
       </View>
     </Pressable>
-    <Pressable accessibilityRole="button" accessibilityLabel={favorite ? `Quitar ${event.nombre} de favoritos` : `Guardar ${event.nombre}`} accessibilityState={{ selected: favorite }} onPress={onFavorite} hitSlop={5} style={styles.cardHeart}><Icon name={favorite ? 'filledHeart' : 'heart'} color={colors.primary} size={21} /></Pressable>
+    {onFavorite ? <Pressable accessibilityRole="button" accessibilityLabel={favorite ? `Quitar ${event.nombre} de favoritos` : `Guardar ${event.nombre}`} accessibilityState={{ selected: favorite }} onPress={onFavorite} hitSlop={5} style={styles.cardHeart}><Icon name={favorite ? 'filledHeart' : 'heart'} color={colors.primary} size={21} /></Pressable> : null}
   </View>;
 }
 

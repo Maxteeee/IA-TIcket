@@ -37,7 +37,7 @@ Base en JavaScript para desarrollar el trabajo práctico. El frontend es una app
 
 El backend implementa usuarios, categorías, eventos, compras y reseñas mediante rutas → controladores → servicios → dominio/repositorios. Los tipos de entrada pertenecen al evento; los mensajes e historial, a la compra. El [análisis del dominio y contrato de la API](backend/README.md) explica las operaciones, reglas y límites. Se conserva el ejemplo `items`.
 
-El frontend abre una maqueta navegable con datos locales y perfiles Comprador 1 y Organizador 1, alternables desde la barra superior. Todavía no consume esta API. Para recorrerla no hace falta iniciar el backend. Ver [perfiles y recorrido de prueba](frontend/README.md).
+El frontend conecta **C3: búsqueda textual y categorías** con la API; los demás recorridos conservan sus datos locales. Incluye **Comprador 1** y **Organizador 1**, con un botón superior para alternar y acciones según rol y propiedad. Para usar Explorar hay que iniciar el backend y configurar su dirección accesible desde el celular. Ver [perfiles y recorrido de prueba](frontend/README.md).
 
 ## Requisitos
 
@@ -67,6 +67,8 @@ En una terminal, desde la raíz:
 ```bash
 npm run backend
 ```
+
+Para probar C3 con categorías y eventos iniciales, usar `npm run backend:demo` en lugar del arranque vacío. El detalle del recorrido está en [frontend/README.md](frontend/README.md).
 
 El servidor escucha en todas las interfaces en el puerto 3000 y muestra las direcciones de red de la computadora. Abrí `http://localhost:3000/api/health` en la computadora para comprobarlo.
 
