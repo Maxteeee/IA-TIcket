@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { currentUser, initialEvents, initialMessages, initialPurchases, initialSales, organizers as organizerFixtures } from './data/mockData';
+import { initialEvents, initialFavoritesByUser, initialMessages, initialPurchases, organizers as organizerFixtures } from './data/mockData';
 import { colors } from './theme';
-import { Icon } from './components/MockUI';
+import { EmptyState, Icon } from './components/MockUI';
+import SessionSwitcher from './components/SessionSwitcher';
+import { useMockSession } from './session/MockSessionProvider';
+import { RolUsuario } from './session/roles';
+import { canAccessPurchase, canAccessRoute, canManageEvent, canOrganize, canPurchase, canReviewPurchase, hasRole, selectSessionData } from './session/permissions';
 import CatalogScreen from './screens/CatalogScreen';
 import EventDetailScreen from './screens/EventDetailScreen';
 import PurchasesScreen from './screens/PurchasesScreen';
@@ -14,30 +18,50 @@ import CreateEventScreen from './screens/CreateEventScreen';
 
 const initialFilters = { search: '', category: 'Todos', sort: 'fecha' };
 const tabs = [
-  { id: 'explore', label: 'Explorar', icon: 'explore' },
-  { id: 'favorites', label: 'Favoritos', icon: 'heart' },
-  { id: 'purchases', label: 'Compras', icon: 'ticket' },
-  { id: 'organize', label: 'Organizar', icon: 'organize' },
+  { id: 'explore', label: 'Explorar', icon: 'explore', role: RolUsuario.COMPRADOR },
+  { id: 'favorites', label: 'Favoritos', icon: 'heart', role: RolUsuario.COMPRADOR },
+  { id: 'purchases', label: 'Compras', icon: 'ticket', role: RolUsuario.COMPRADOR },
+  { id: 'organize', label: 'Organizar', icon: 'organize', role: RolUsuario.ORGANIZADOR },
 ];
 
 export default function MockApp() {
+  const { session, nextSession, switchProfile } = useMockSession();
+  const userId = session.usuario.id;
   const [tab, setTab] = useState('explore');
   const [stack, setStack] = useState([]);
   const [events, setEvents] = useState(initialEvents);
   const [organizers, setOrganizers] = useState(organizerFixtures);
-  const [favoriteIds, setFavoriteIds] = useState(['after', 'umbral']);
-  const [purchases, setPurchases] = useState(initialPurchases);
-  const [sales, setSales] = useState(initialSales);
+  const [favoritesByUser, setFavoritesByUser] = useState(initialFavoritesByUser);
+  const [allPurchases, setAllPurchases] = useState(initialPurchases);
   const [messages, setMessages] = useState(initialMessages);
-  const [catalogFilters, setCatalogFilters] = useState(initialFilters);
-  const [favoriteFilters, setFavoriteFilters] = useState(initialFilters);
+  const [catalogFiltersByUser, setCatalogFiltersByUser] = useState({});
+  const [favoriteFiltersByUser, setFavoriteFiltersByUser] = useState({});
   const counter = useRef(1);
   const route = stack[stack.length - 1];
+  const { purchases, sales, favoriteIds } = selectSessionData(session, { events, purchases: allPurchases, favoritesByUser });
+  const visibleTabs = tabs.filter((item) => hasRole(session, item.role));
 
   const back = () => setStack((current) => current.slice(0, -1));
-  const open = (name, params = {}) => setStack((current) => [...current, { name, ...params }]);
-  const toggleFavorite = (id) => setFavoriteIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  const open = (name, params = {}) => {
+    const destination = { name, ...params };
+    if (canAccessRoute(session, destination, { events, purchases: allPurchases })) {
+      setStack((current) => [...current, destination]);
+    }
+  };
+  const toggleFavorite = (id) => {
+    if (!hasRole(session, RolUsuario.COMPRADOR) || !events.some((event) => event.id === id)) return;
+    setFavoritesByUser((current) => {
+      const own = current[userId] ?? [];
+      return { ...current, [userId]: own.includes(id) ? own.filter((item) => item !== id) : [...own, id] };
+    });
+  };
   const explore = () => { setStack([]); setTab('explore'); };
+  const changeProfile = () => {
+    // Los datos compartidos permanecen; se descarta la navegación del otro perfil.
+    setStack([]);
+    setTab(canOrganize(nextSession) ? 'organize' : 'explore');
+    switchProfile();
+  };
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -50,75 +74,99 @@ export default function MockApp() {
 
   const simulatePurchase = (eventId, ticketId, quantity) => {
     const event = events.find((item) => item.id === eventId);
-    const ticket = event.tiposEntrada.find((item) => item.id === ticketId);
+    const ticket = event?.tiposEntrada.find((item) => item.id === ticketId);
+    if (!canPurchase(session, event) || !ticket || !Number.isInteger(quantity) || quantity < 1 || quantity > ticket.cupo) return;
     const purchase = {
       id: `DEMO-${counter.current++}`, eventoId: eventId, tipoEntradaId: ticketId,
-      cantidad: quantity, total: ticket.precio * quantity, estado: 'PENDIENTE', comprador: currentUser.nombre,
+      cantidad: quantity, total: ticket.precio * quantity, estado: 'PENDIENTE',
+      compradorId: userId, comprador: session.usuario.nombre,
     };
-    // Es solo un escenario visual: no reserva cupo ni define el flujo real de pago.
-    setPurchases((current) => [purchase, ...current]);
-    if (event.organizadorId === currentUser.id) setSales((current) => [purchase, ...current]);
+    // La maqueta sigue sin cobrar ni reservar cupos en el backend.
+    setAllPurchases((current) => [purchase, ...current]);
     setTab('purchases');
     setStack([{ name: 'purchase', id: purchase.id, role: 'comprador' }]);
   };
 
-  const sendMessage = (id, text, role) => {
-    const message = { id: `message-${counter.current++}`, autor: role, texto: text, hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) };
+  const sendMessage = (id, text) => {
+    const purchase = allPurchases.find((item) => item.id === id);
+    const event = events.find((item) => item.id === purchase?.eventoId);
+    if (!canAccessPurchase(session, purchase, event) || !text.trim()) return;
+    const message = { id: `message-${counter.current++}`, usuarioId: userId, texto: text.trim(), hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) };
     setMessages((current) => ({ ...current, [id]: [...(current[id] ?? []), message] }));
   };
 
   const createEvent = (draft) => {
+    if (!canOrganize(session)) return;
     const id = `demo-event-${counter.current++}`;
     const posters = { Música: 'night', Teatro: 'theater', Festivales: 'festival', Conferencias: 'talk', Deportes: 'sport' };
-    const event = { ...draft, id, lugar: 'Lugar a confirmar', organizadorId: currentUser.id, poster: posters[draft.categoria], etiqueta: 'Un nuevo encuentro en tu agenda', tiposEntrada: draft.tiposEntrada.map((ticket, index) => ({ ...ticket, id: `${id}-ticket-${index}` })) };
+    const event = { ...draft, id, lugar: 'Lugar a confirmar', organizadorId: userId, poster: posters[draft.categoria], etiqueta: 'Un nuevo encuentro en tu agenda', tiposEntrada: draft.tiposEntrada.map((ticket, index) => ({ ...ticket, id: `${id}-ticket-${index}` })) };
     setEvents((current) => [...current, event]);
     setTab('organize');
     setStack([{ name: 'organizerEvent', eventId: id }]);
   };
 
+  const editEvent = (eventId, changes) => {
+    const event = events.find((item) => item.id === eventId);
+    if (!canManageEvent(session, event)) return;
+    const { nombre, descripcion, categoria } = changes;
+    setEvents((current) => current.map((item) => item.id === eventId ? { ...item, nombre, descripcion, categoria } : item));
+    back();
+  };
+
   const saveReview = (purchaseId, stars, text) => {
-    const purchase = purchases.find((item) => item.id === purchaseId);
-    const event = events.find((item) => item.id === purchase.eventoId);
-    if (purchase.estado !== 'UTILIZADA' || !event.finalizadoDemo || purchase.resenada) return;
-    const review = { id: `review-${counter.current++}`, autor: currentUser.nombre, puntuacion: stars, detalle: text, evento: event.nombre };
+    const purchase = allPurchases.find((item) => item.id === purchaseId);
+    const event = events.find((item) => item.id === purchase?.eventoId);
+    if (!canReviewPurchase(session, purchase, event) || !Number.isFinite(stars) || stars < 0 || stars > 5 || !text.trim()) return;
+    const review = { id: `review-${counter.current++}`, usuarioId: userId, autor: session.usuario.nombre, puntuacion: stars, detalle: text.trim(), evento: event.nombre };
     setOrganizers((current) => current.map((organizer) => organizer.id === event.organizadorId ? { ...organizer, resenias: [...organizer.resenias, review] } : organizer));
-    setPurchases((current) => current.map((item) => item.id === purchaseId ? { ...item, resenada: true } : item));
+    setAllPurchases((current) => current.map((item) => item.id === purchaseId ? { ...item, resenada: true } : item));
   };
 
   let content;
-  if (route?.name === 'event') {
+  if (!canAccessRoute(session, route, { events, purchases: allPurchases })) {
+    content = <EmptyState title="Esta vista no está disponible" description="Volvé al inicio para continuar con tu perfil activo." action="Ir al inicio" onAction={explore} />;
+  } else if (route?.name === 'event') {
     const event = events.find((item) => item.id === route.eventId);
-    content = <EventDetailScreen key={event.id} event={event} organizer={organizers.find((item) => item.id === event.organizadorId)} favorite={favoriteIds.includes(event.id)} onFavorite={() => toggleFavorite(event.id)} onBack={back} onPurchase={simulatePurchase} />;
+    content = <EventDetailScreen key={event.id} event={event} organizer={organizers.find((item) => item.id === event.organizadorId)} favorite={favoriteIds.includes(event.id)} onFavorite={() => toggleFavorite(event.id)} onBack={back} onPurchase={simulatePurchase} onManage={canManageEvent(session, event) ? () => open('organizerEvent', { eventId: event.id }) : undefined} />;
   } else if (route?.name === 'purchase' || route?.name === 'chat') {
-    const role = route.role ?? 'comprador';
-    const purchase = (role === 'organizador' ? sales : purchases).find((item) => item.id === route.id);
+    const role = route.role;
+    const purchase = allPurchases.find((item) => item.id === route.id);
     const event = events.find((item) => item.id === purchase.eventoId);
     content = route.name === 'chat'
       ? <ChatScreen key={`${purchase.id}-${role}`} event={event} purchase={purchase} organizer={organizers.find((item) => item.id === event.organizadorId)} messages={messages[purchase.id] ?? []} role={role} onBack={back} onSend={sendMessage} />
       : <PurchaseDetailScreen key={`${purchase.id}-${role}`} purchase={purchase} event={event} organizer={role === 'organizador'} onBack={back} onChat={() => open('chat', { id: purchase.id, role })} onEvent={() => open('event', { eventId: event.id })} onReview={saveReview} />;
   } else if (route?.name === 'organizerEvent') {
     const event = events.find((item) => item.id === route.eventId);
-    content = <OrganizerEventScreen event={event} sales={sales.filter((sale) => sale.eventoId === event.id)} onBack={back} onOpenPurchase={(id) => open('purchase', { id, role: 'organizador' })} onPreview={() => open('event', { eventId: event.id })} />;
-  } else if (route?.name === 'create') {
-    content = <CreateEventScreen onBack={back} onCreate={createEvent} />;
+    content = <OrganizerEventScreen event={event} sales={sales.filter((sale) => sale.eventoId === event.id)} onBack={back} onEdit={() => open('edit', { eventId: event.id })} onOpenPurchase={(id) => open('purchase', { id, role: 'organizador' })} onPreview={() => open('event', { eventId: event.id })} />;
+  } else if (route?.name === 'create' || route?.name === 'edit') {
+    const event = route.name === 'edit' ? events.find((item) => item.id === route.eventId) : undefined;
+    content = <CreateEventScreen event={event} onBack={back} onCreate={event ? (changes) => editEvent(event.id, changes) : createEvent} />;
   } else if (tab === 'explore' || tab === 'favorites') {
     const saved = tab === 'favorites';
-    content = <CatalogScreen key={tab} events={events} organizers={organizers} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} onOpenEvent={(eventId) => open('event', { eventId })} filters={saved ? favoriteFilters : catalogFilters} onFilters={saved ? setFavoriteFilters : setCatalogFilters} saved={saved} onExplore={explore} />;
+    const filters = (saved ? favoriteFiltersByUser : catalogFiltersByUser)[userId] ?? initialFilters;
+    const setFilters = saved ? setFavoriteFiltersByUser : setCatalogFiltersByUser;
+    content = <CatalogScreen key={tab} events={events} organizers={organizers} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} onOpenEvent={(eventId) => open('event', { eventId })} filters={filters} onFilters={(value) => setFilters((current) => ({ ...current, [userId]: value }))} saved={saved} onExplore={explore} />;
   } else if (tab === 'purchases') {
     content = <PurchasesScreen purchases={purchases} events={events} onOpenPurchase={(id) => open('purchase', { id, role: 'comprador' })} onExplore={explore} />;
-  } else {
+  } else if (tab === 'organize' && canOrganize(session)) {
     content = <OrganizerScreen events={events} sales={sales} onCreate={() => open('create')} onOpenEvent={(eventId) => open('organizerEvent', { eventId })} />;
+  } else {
+    content = <EmptyState title="Esta sección no está disponible" action="Explorar eventos" onAction={explore} />;
   }
 
-  return <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}><View style={{ flex: 1 }}>{content}</View>{!route ? <View style={styles.navigation}>{tabs.map((item) => {
-    const selected = tab === item.id;
-    return <Pressable key={item.id} accessibilityRole="tab" accessibilityLabel={item.label} accessibilityState={{ selected }} onPress={() => setTab(item.id)} style={styles.tab}><View style={[styles.tabIcon, selected && { backgroundColor: colors.primaryLight }]}><Icon name={item.icon} color={selected ? colors.primary : '#9A91A7'} size={23} /></View><Text style={{ fontSize: 10, fontWeight: selected ? '800' : '500', color: selected ? colors.primary : colors.muted }}>{item.label}</Text></Pressable>;
-  })}</View> : null}</SafeAreaView>;
+  return <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+    <SessionSwitcher onSwitch={changeProfile} />
+    <View key={userId} style={{ flex: 1 }}>{content}</View>
+    {!route ? <View style={styles.navigation}>{visibleTabs.map((item) => {
+      const selected = tab === item.id;
+      return <Pressable key={item.id} accessibilityRole="tab" accessibilityLabel={item.label} accessibilityState={{ selected }} onPress={() => setTab(item.id)} style={styles.tab}><View style={[styles.tabIcon, selected && { backgroundColor: colors.primaryLight }]}><Icon name={item.icon} color={selected ? colors.primary : colors.muted} size={23} /></View><Text style={{ fontSize: 10, fontWeight: selected ? '800' : '500', color: selected ? colors.primary : colors.muted }}>{item.label}</Text></Pressable>;
+    })}</View> : null}
+  </SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  navigation: { flexDirection: 'row', backgroundColor: '#fff', paddingTop: 9, paddingBottom: 8, borderTopWidth: 1, borderColor: colors.border },
+  navigation: { flexDirection: 'row', backgroundColor: colors.surface, paddingTop: 9, paddingBottom: 8, borderTopWidth: 1, borderColor: colors.border },
   tab: { flex: 1, alignItems: 'center', gap: 4, minHeight: 54, justifyContent: 'center' },
   tabIcon: { width: 53, height: 30, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 });

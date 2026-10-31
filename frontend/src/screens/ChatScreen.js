@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Icon, ScreenHeader } from '../components/MockUI';
 import { colors, ui } from '../theme';
+import { useMockSession } from '../session/MockSessionProvider';
 
 export default function ChatScreen({ event, purchase, organizer, messages, role = 'comprador', onBack, onSend }) {
+  const { session } = useMockSession();
   const [text, setText] = useState('');
   const scroll = useRef(null);
   useEffect(() => { scroll.current?.scrollToEnd({ animated: true }); }, [messages.length]);
   const send = () => {
     if (!text.trim()) return;
-    onSend(purchase.id, text.trim(), role);
+    onSend(purchase.id, text.trim());
     setText('');
   };
 
@@ -20,12 +22,12 @@ export default function ChatScreen({ event, purchase, organizer, messages, role 
       <Text style={[ui.caption, { textAlign: 'center', marginBottom: 8 }]}>Un espacio para resolver tus consultas</Text>
       {!messages.length ? <View style={[ui.card, { alignItems: 'center', marginTop: 35 }]}><Text style={ui.heading}>La conversación empieza acá</Text><Text style={[ui.text, { textAlign: 'center' }]}>Podés escribir en cualquier momento, incluso después del evento.</Text></View> : null}
       {messages.map((message) => {
-        const mine = message.autor === role;
+        const mine = message.usuarioId === session.usuario.id;
         return <View key={message.id} style={[styles.bubble, mine && styles.myBubble]}><Text style={{ fontSize: 14, lineHeight: 22, color: mine ? '#fff' : colors.ink }}>{message.texto}</Text><Text style={{ fontSize: 10, alignSelf: 'flex-end', marginTop: 6, color: mine ? '#DCC9FA' : colors.muted }}>{message.hora}{mine ? '  ✓' : ''}</Text></View>;
       })}
       <Text style={[ui.caption, { textAlign: 'center', marginTop: 15 }]}>Mensajes de prueba · No se envían a otras personas.</Text>
     </ScrollView>
-    <View style={styles.composer}><TextInput accessibilityLabel="Escribir mensaje" placeholder="Escribí tu consulta…" placeholderTextColor={colors.muted} value={text} onChangeText={setText} multiline maxLength={1000} style={styles.input} /><Pressable accessibilityRole="button" accessibilityLabel="Enviar mensaje de ejemplo" accessibilityState={{ disabled: !text.trim() }} disabled={!text.trim()} onPress={send} style={[styles.send, !text.trim() && { opacity: 0.4 }]}><Icon name="send" color="#fff" size={26} /></Pressable></View>
+    <View style={styles.composer}><TextInput accessibilityLabel="Escribir mensaje" placeholder={role === 'organizador' ? 'Escribí tu respuesta…' : 'Escribí tu consulta…'} placeholderTextColor={colors.muted} value={text} onChangeText={setText} multiline maxLength={1000} style={styles.input} /><Pressable accessibilityRole="button" accessibilityLabel="Enviar mensaje de ejemplo" accessibilityState={{ disabled: !text.trim() }} disabled={!text.trim()} onPress={send} style={[styles.send, !text.trim() && { opacity: 0.4 }]}><Icon name="send" color="#fff" size={26} /></Pressable></View>
   </KeyboardAvoidingView>;
 }
 

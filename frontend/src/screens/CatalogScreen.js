@@ -1,16 +1,18 @@
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { categories, currentUser } from '../data/mockData';
+import { categories } from '../data/mockData';
+import { useMockSession } from '../session/MockSessionProvider';
 import { colors, ui } from '../theme';
 import { Chip, EmptyState, EventCard, Icon } from '../components/MockUI';
 import { selectEvents } from '../utils/mockPresentation';
 
 export default function CatalogScreen({ events, organizers, favoriteIds, onToggleFavorite, onOpenEvent, filters, onFilters, saved = false, onExplore }) {
+  const { session } = useMockSession();
   const visible = selectEvents(events, organizers, { ...filters, favoriteIds: saved ? favoriteIds : null });
   const activeFilters = Boolean(filters.search || filters.category !== 'Todos');
   const header = <View style={{ gap: 22, paddingBottom: 20 }}>
     <View style={ui.between}>
       <View style={[ui.row, { gap: 9 }]}><View style={styles.brandMark}><Icon name="ticket" color="#fff" size={24} /></View><Text style={styles.brand}>ai ticket<Text style={{ color: colors.primary }}> it.</Text></Text></View>
-      <View style={ui.row}><View style={styles.demo}><Text style={styles.demoText}>DEMO</Text></View><View style={styles.avatar}><Text style={styles.avatarText}>{currentUser.initials}</Text></View></View>
+      <View style={ui.row}><View style={styles.demo}><Text style={styles.demoText}>DEMO</Text></View><View style={styles.avatar}><Text style={styles.avatarText}>{session.usuario.initials}</Text></View></View>
     </View>
     <View style={{ gap: 7 }}><Text style={ui.eyebrow}>{saved ? 'TU PRÓXIMO PLAN, GUARDADO' : 'SALÍ DE LA RUTINA'}</Text><Text style={styles.heroTitle}>{saved ? 'Tus ganas de\nvolver a salir.' : 'Hay un plan\ncon tu nombre.'}</Text><Text style={ui.text}>{saved ? 'Los eventos que te gustan, en un solo lugar.' : 'Descubrí eso que no te querés perder.'}</Text></View>
     {!saved && !activeFilters ? <Pressable accessibilityRole="button" accessibilityLabel="Explorar eventos de música" onPress={() => onFilters({ ...filters, category: 'Música' })} style={styles.banner}>

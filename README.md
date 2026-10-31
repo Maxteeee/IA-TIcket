@@ -37,7 +37,7 @@ Base en JavaScript para desarrollar el trabajo práctico. El frontend es una app
 
 El backend implementa usuarios, categorías, eventos, compras y reseñas mediante rutas → controladores → servicios → dominio/repositorios. Los tipos de entrada pertenecen al evento; los mensajes e historial, a la compra. El [análisis del dominio y contrato de la API](backend/README.md) explica las operaciones, reglas y límites. Se conserva el ejemplo `items`.
 
-El frontend abre una maqueta navegable con datos locales: todavía no consume esta API. Para recorrerla no hace falta iniciar el backend.
+El frontend abre una maqueta navegable con datos locales y perfiles Comprador 1 y Organizador 1, alternables desde la barra superior. Todavía no consume esta API. Para recorrerla no hace falta iniciar el backend. Ver [perfiles y recorrido de prueba](frontend/README.md).
 
 ## Requisitos
 
@@ -108,6 +108,7 @@ El nombre del ejemplo debe tener entre 1 y 100 caracteres. Los endpoints del dom
 
 ```bash
 npm test
+npm test --workspace=frontend
 npm run check --workspace=frontend
 ```
 
