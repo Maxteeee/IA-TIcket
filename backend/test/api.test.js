@@ -2,10 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createApp } from '../src/app.js';
+import { createRepositories } from '../src/repositories/index.js';
+import { seedReferenceData } from '../src/data/reference.js';
 
 async function start(t) {
   let instant = new Date('2026-11-01T12:00:00Z');
-  const server = createApp({ now: () => new Date(instant) }).listen(0, '127.0.0.1');
+  const repositories = seedReferenceData(createRepositories());
+  const server = createApp({ repositories, now: () => new Date(instant) }).listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(() => new Promise((resolve, reject) => {
     server.close((error) => error ? reject(error) : resolve());
@@ -28,7 +31,7 @@ async function start(t) {
 
 async function setup(t, cupo = 5) {
   const s = await start(t);
-  const organizador = await s.request('/usuarios', { method: 'POST', body: { nombre: 'Ana', apellido: 'Pérez' }, status: 201 });
+  const organizador = await s.request('/usuarios/organizador-1');
   const comprador = await s.request('/usuarios', { method: 'POST', body: { nombre: 'Luis', apellido: 'Gómez' }, status: 201 });
   const tercero = await s.request('/usuarios', { method: 'POST', body: { nombre: 'Otra', apellido: 'Persona' }, status: 201 });
   const categoria = await s.request('/categorias', { method: 'POST', body: { nombre: 'Música' }, status: 201 });

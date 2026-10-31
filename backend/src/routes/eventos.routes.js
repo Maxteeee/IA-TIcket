@@ -13,6 +13,7 @@ export function createEventosRouter(controller, comprasController) {
   router.patch('/:id/tipos-entrada/:tipoEntradaId', controller.updateTicket);
   router.delete('/:id/tipos-entrada/:tipoEntradaId', controller.deleteTicket);
   router.get('/:id/compras', comprasController.listByEvent);
+  router.get('/:id/ventas', comprasController.salesSummary);
   router.get('/:id/resenias', controller.listReviews);
   router.get('/:id/experiencias-anteriores', controller.previousReviews);
   return router;

@@ -1,5 +1,5 @@
 // Contratos HTTP explícitos: nunca serializar directamente el grafo del dominio.
-export const usuarioDto = ({ id, nombre, apellido }) => ({ id, nombre, apellido });
+export const usuarioDto = ({ id, nombre, apellido, roles }) => ({ id, nombre, apellido, roles: [...roles] });
 export const categoriaDto = ({ id, nombre, descripcion }) => ({ id, nombre, descripcion });
 export const tipoEntradaDto = ({ id, nombre, descripcion, precio, cupo }) => ({ id, nombre, descripcion, precio, cupo });
 
@@ -26,7 +26,10 @@ export function compraDto(compra, ahora = new Date()) {
     id: compra.id,
     compradorId: compra.comprador.id,
     eventoId: compra.evento.id,
+    evento: { id: compra.evento.id, nombre: compra.evento.nombre, fecha: compra.evento.fecha.toISOString(), organizadorId: compra.evento.organizador.id },
     tipoEntradaId: compra.tipoEntrada.id,
+    tipoEntradaNombre: compra.tipoEntradaNombre,
+    precioUnitario: compra.precioUnitario,
     cantidad: compra.cantidad,
     total: compra.total,
     estado: compra.estado,
@@ -34,6 +37,15 @@ export function compraDto(compra, ahora = new Date()) {
   };
 }
 
-export const mensajeDto = ({ id, usuario, mensaje, enviado }) => ({ id, usuarioId: usuario.id, mensaje, enviado: enviado.toISOString() });
+export function ventasEventoDto({ evento, compras }, ahora = new Date()) {
+  return {
+    evento: { id: evento.id, nombre: evento.nombre, fecha: evento.fecha.toISOString(),
+      organizadorId: evento.organizador.id, tiposEntrada: evento.tiposEntrada.map(tipoEntradaDto) },
+    compras: compras.map((compra) => ({ ...compraDto(compra, ahora),
+      comprador: { id: compra.comprador.id, nombre: compra.comprador.nombre, apellido: compra.comprador.apellido } })),
+  };
+}
+
+export const mensajeDto = ({ id, usuario, mensaje, enviado }, compraId) => ({ id, compraId, usuarioId: usuario.id, mensaje, enviado: enviado.toISOString() });
 export const cambioEstadoDto = ({ id, compra, estado, quien, fechaHora }) => ({ id, compraId: compra.id, estado, quienId: quien.id, fechaHora: fechaHora.toISOString() });
 export const reseniaDto = ({ id, comprador, evento, compra, detalle, puntuacion }) => ({ id, compradorId: comprador.id, eventoId: evento.id, compraId: compra?.id ?? null, detalle, puntuacion });

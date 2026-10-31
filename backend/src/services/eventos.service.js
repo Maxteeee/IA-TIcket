@@ -1,10 +1,12 @@
 import { Evento } from '../domain/Evento.js';
 import { TipoEntrada } from '../domain/TipoEntrada.js';
 import { DomainError } from '../domain/DomainError.js';
+import { RolUsuario } from '../domain/RolUsuario.js';
 import { actor, authorize, conflict, date, fields, normalize, number, required, text } from './validation.js';
 
 export function createEventosService(repositories, { now }) {
   const { eventos, categorias, compras, resenias, usuarios } = repositories;
+  const publications = new Map();
   const get = (id) => required(eventos, id, 'Evento');
   const reputation = (organizador) => {
     const recibidas = resenias.findByOrganizador(organizador);
@@ -95,12 +97,25 @@ export function createEventosService(repositories, { now }) {
           return desempate;
         });
     },
-    create(data, actorId) {
+    create(data, actorId, { idempotencyKey } = {}) {
       const organizador = actor(repositories, actorId);
+      authorize(organizador.tieneRol(RolUsuario.ORGANIZADOR), 'Solo un organizador puede publicar eventos');
+      if (idempotencyKey !== undefined && (typeof idempotencyKey !== 'string' || !/^[a-zA-Z0-9-]{1,100}$/.test(idempotencyKey))) {
+        throw new DomainError('Idempotency-Key debe contener de 1 a 100 letras, números o guiones');
+      }
+      const key = idempotencyKey && `${organizador.id}:${idempotencyKey}`;
+      const previous = key && publications.get(key);
+      if (previous) {
+        conflict(previous.payload !== JSON.stringify(data), 'La clave de publicación ya corresponde a otro contenido');
+        conflict(!eventos.findById(previous.evento.id), 'La publicación anterior ya no está disponible');
+        return previous.evento;
+      }
       const prepared = { fechaFin: null, ...values(data) };
       validateDates(prepared);
       if (prepared.fecha <= now()) throw new DomainError('La fecha del evento debe ser futura');
-      return eventos.save(new Evento({ ...prepared, organizador }));
+      const evento = eventos.save(new Evento({ ...prepared, organizador }));
+      if (key) publications.set(key, { payload: JSON.stringify(data), evento });
+      return evento;
     },
     update(id, data, actorId) {
       const evento = own(id, actorId);

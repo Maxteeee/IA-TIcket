@@ -3,7 +3,7 @@ import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { initialEvents, initialFavoritesByUser, initialMessages, initialPurchases, organizers as organizerFixtures } from './data/mockData';
 import { colors } from './theme';
-import { EmptyState, Icon } from './components/MockUI';
+import { EmptyState, Icon, ScreenHeader } from './components/MockUI';
 import SessionSwitcher from './components/SessionSwitcher';
 import { useMockSession } from './session/MockSessionProvider';
 import { RolUsuario } from './session/roles';
@@ -13,10 +13,16 @@ import ConnectedCatalogScreen from './screens/ConnectedCatalogScreen';
 import CatalogEventScreen from './screens/CatalogEventScreen';
 import EventDetailScreen from './screens/EventDetailScreen';
 import PurchasesScreen from './screens/PurchasesScreen';
+import ConnectedPurchasesScreen from './screens/ConnectedPurchasesScreen';
 import PurchaseDetailScreen from './screens/PurchaseDetailScreen';
 import ChatScreen from './screens/ChatScreen';
+import ConnectedChatScreen from './screens/ConnectedChatScreen';
 import OrganizerScreen, { OrganizerEventScreen } from './screens/OrganizerScreen';
 import CreateEventScreen from './screens/CreateEventScreen';
+import ConnectedCreateEventScreen from './screens/ConnectedCreateEventScreen';
+import ConnectedOrganizerScreen from './screens/ConnectedOrganizerScreen';
+import EventSalesScreen from './screens/EventSalesScreen';
+import PurchaseReceiptScreen from './screens/PurchaseReceiptScreen';
 
 const initialFilters = { search: '', category: 'Todos', sort: 'fecha' };
 const tabs = [
@@ -58,6 +64,7 @@ export default function MockApp() {
     });
   };
   const explore = () => { setStack([]); setTab('explore'); };
+  const showPurchases = () => { setStack([]); setTab('purchases'); };
   const changeProfile = () => {
     // Los datos compartidos permanecen; se descarta la navegación del otro perfil.
     setStack([]);
@@ -97,14 +104,16 @@ export default function MockApp() {
     setMessages((current) => ({ ...current, [id]: [...(current[id] ?? []), message] }));
   };
 
-  const createEvent = (draft) => {
-    if (!canOrganize(session)) return;
-    const id = `demo-event-${counter.current++}`;
-    const posters = { Música: 'night', Teatro: 'theater', Festivales: 'festival', Conferencias: 'talk', Deportes: 'sport' };
-    const event = { ...draft, id, lugar: 'Lugar a confirmar', organizadorId: userId, poster: posters[draft.categoria], etiqueta: 'Un nuevo encuentro en tu agenda', tiposEntrada: draft.tiposEntrada.map((ticket, index) => ({ ...ticket, id: `${id}-ticket-${index}` })) };
-    setEvents((current) => [...current, event]);
+  const eventPublished = (event) => {
+    if (!canManageEvent(session, event)) return;
     setTab('organize');
-    setStack([{ name: 'organizerEvent', eventId: id }]);
+    setStack([{ name: 'publishedEvent', eventId: event.id, published: true }]);
+  };
+
+  const purchaseRegistered = (purchase) => {
+    if (purchase.compradorId !== userId || !hasRole(session, RolUsuario.COMPRADOR)) return;
+    setTab('purchases');
+    setStack([{ name: 'purchaseReceipt', purchaseId: purchase.id }]);
   };
 
   const editEvent = (eventId, changes) => {
@@ -127,8 +136,27 @@ export default function MockApp() {
   let content;
   if (!canAccessRoute(session, route, { events, purchases: allPurchases })) {
     content = <EmptyState title="Esta vista no está disponible" description="Volvé al inicio para continuar con tu perfil activo." action="Ir al inicio" onAction={explore} />;
+  } else if (route?.name === 'purchaseReceipt') {
+    content = <PurchaseReceiptScreen purchaseId={route.purchaseId} onBack={back}
+      onEvent={(eventId) => setStack([{ name: 'catalogEvent', eventId }])} onExplore={explore} onPurchases={showPurchases}
+      onChat={() => open('purchaseChat', { purchaseId: route.purchaseId })} />;
+  } else if (route?.name === 'purchaseChat') {
+    content = <ConnectedChatScreen key={route.purchaseId} purchaseId={route.purchaseId} onBack={back} />;
+  } else if (route?.name === 'saleChat') {
+    content = <ConnectedChatScreen key={`${route.eventId}:${route.purchaseId}`} purchaseId={route.purchaseId} eventId={route.eventId} role="organizador" onBack={back} />;
+  } else if (route?.name === 'purchasesDemo') {
+    content = <View style={{ flex: 1 }}><ScreenHeader title="Compras de ejemplo" onBack={back} />
+      <PurchasesScreen purchases={purchases} events={events} onOpenPurchase={(id) => open('purchase', { id, role: 'comprador' })} onExplore={explore} />
+    </View>;
+  } else if (route?.name === 'publishedEvent') {
+    content = <EventSalesScreen key={route.eventId} eventId={route.eventId} onBack={() => { setStack([]); setTab('organize'); }}
+      published={route.published} onViewPublic={() => open('catalogEvent', { eventId: route.eventId })}
+      onOpenChat={(purchaseId) => open('saleChat', { eventId: route.eventId, purchaseId })} />;
+  } else if (route?.name === 'organizerDemo') {
+    content = <View style={{ flex: 1 }}><ScreenHeader title="Ventas de ejemplo" onBack={back} />
+      <OrganizerScreen events={events} sales={sales} onCreate={() => open('create')} onOpenEvent={(eventId) => open('organizerEvent', { eventId })} /></View>;
   } else if (route?.name === 'catalogEvent') {
-    content = <CatalogEventScreen key={route.eventId} eventId={route.eventId} onBack={back} />;
+    content = <CatalogEventScreen key={route.eventId} eventId={route.eventId} onBack={back} onPurchased={purchaseRegistered} />;
   } else if (route?.name === 'event') {
     const event = events.find((item) => item.id === route.eventId);
     content = <EventDetailScreen key={event.id} event={event} organizer={organizers.find((item) => item.id === event.organizadorId)} favorite={favoriteIds.includes(event.id)} onFavorite={() => toggleFavorite(event.id)} onBack={back} onPurchase={simulatePurchase} onManage={canManageEvent(session, event) ? () => open('organizerEvent', { eventId: event.id }) : undefined} />;
@@ -142,9 +170,11 @@ export default function MockApp() {
   } else if (route?.name === 'organizerEvent') {
     const event = events.find((item) => item.id === route.eventId);
     content = <OrganizerEventScreen event={event} sales={sales.filter((sale) => sale.eventoId === event.id)} onBack={back} onEdit={() => open('edit', { eventId: event.id })} onOpenPurchase={(id) => open('purchase', { id, role: 'organizador' })} onPreview={() => open('event', { eventId: event.id })} />;
-  } else if (route?.name === 'create' || route?.name === 'edit') {
-    const event = route.name === 'edit' ? events.find((item) => item.id === route.eventId) : undefined;
-    content = <CreateEventScreen event={event} onBack={back} onCreate={event ? (changes) => editEvent(event.id, changes) : createEvent} />;
+  } else if (route?.name === 'create') {
+    content = <ConnectedCreateEventScreen onBack={back} onPublished={eventPublished} />;
+  } else if (route?.name === 'edit') {
+    const event = events.find((item) => item.id === route.eventId);
+    content = <CreateEventScreen event={event} onBack={back} onCreate={(changes) => editEvent(event.id, changes)} />;
   } else if (tab === 'explore') {
     content = <ConnectedCatalogScreen filters={catalogFiltersByUser[userId] ?? initialFilters}
       onFilters={(value) => setCatalogFiltersByUser((current) => ({ ...current, [userId]: value }))}
@@ -156,9 +186,11 @@ export default function MockApp() {
       onFilters={(value) => setFavoriteFiltersByUser((current) => ({ ...current, [userId]: value }))}
       saved onExplore={explore} />;
   } else if (tab === 'purchases') {
-    content = <PurchasesScreen purchases={purchases} events={events} onOpenPurchase={(id) => open('purchase', { id, role: 'comprador' })} onExplore={explore} />;
+    content = <ConnectedPurchasesScreen onOpenPurchase={(purchaseId) => open('purchaseReceipt', { purchaseId })}
+      onExplore={explore} onViewDemo={() => open('purchasesDemo')} />;
   } else if (tab === 'organize' && canOrganize(session)) {
-    content = <OrganizerScreen events={events} sales={sales} onCreate={() => open('create')} onOpenEvent={(eventId) => open('organizerEvent', { eventId })} />;
+    content = <ConnectedOrganizerScreen onCreate={() => open('create')} onOpenEvent={(eventId) => open('publishedEvent', { eventId })}
+      onViewDemo={() => open('organizerDemo')} />;
   } else {
     content = <EmptyState title="Esta sección no está disponible" action="Explorar eventos" onAction={explore} />;
   }

@@ -23,14 +23,14 @@ export function Button({ title, onPress, secondary = false, disabled = false, ic
   </Pressable>;
 }
 
-export function IconButton({ name, label, onPress, active = false, style }) {
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: active }} hitSlop={5} onPress={onPress} style={({ pressed }) => [styles.iconButton, active && { backgroundColor: colors.primaryLight }, pressed && { opacity: 0.6 }, style]}>
+export function IconButton({ name, label, onPress, active = false, disabled = false, style }) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: active, disabled }} disabled={disabled} hitSlop={5} onPress={onPress} style={({ pressed }) => [styles.iconButton, active && { backgroundColor: colors.primaryLight }, (pressed || disabled) && { opacity: 0.6 }, style]}>
     <Icon name={name} color={active ? colors.primary : colors.ink} />
   </Pressable>;
 }
 
-export function Chip({ label, selected, onPress }) {
-  return <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress} style={[styles.chip, selected && styles.selectedChip]}><Text style={[styles.chipText, selected && { color: '#fff' }]}>{label}</Text></Pressable>;
+export function Chip({ label, selected, onPress, disabled = false }) {
+  return <Pressable accessibilityRole="button" accessibilityState={{ selected, disabled }} disabled={disabled} onPress={onPress} style={[styles.chip, selected && styles.selectedChip, disabled && { opacity: 0.6 }]}><Text style={[styles.chipText, selected && { color: '#fff' }]}>{label}</Text></Pressable>;
 }
 
 export function ScreenHeader({ title, subtitle, onBack, action }) {

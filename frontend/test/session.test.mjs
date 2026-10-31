@@ -43,6 +43,62 @@ test('el catálogo conectado admite perfiles compradores y conserva separados lo
   assert.equal(canAccessRoute(buyer(), { name: 'event', eventId: destination.eventId }, state()), false);
 });
 
+test('C4: publicación y panel de ejemplos requieren organizador y no habilitan edición de IDs de API como mocks', () => {
+  for (const route of [{ name: 'create' }, { name: 'publishedEvent', eventId: 'id-api' }, { name: 'organizerDemo' }]) {
+    assert.equal(canAccessRoute(buyer(), route, state()), false);
+    assert.equal(canAccessRoute(organizer(), route, state()), true);
+  }
+  assert.equal(canAccessRoute(organizer(), { name: 'publishedEvent', eventId: '' }, state()), false);
+  assert.equal(canAccessRoute(organizer(), { name: 'edit', eventId: 'id-api' }, state()), false);
+});
+
+test('C12: comprobante conectado requiere comprador y no usa las compras de ejemplo para resolver el ID', () => {
+  const route = { name: 'purchaseReceipt', purchaseId: 'purchase-api' };
+  assert.equal(canAccessRoute(buyer(), route, state()), true);
+  assert.equal(canAccessRoute(organizer(), route, state()), true);
+  assert.equal(canAccessRoute({ usuario: organizer().usuario, roles: [RolUsuario.ORGANIZADOR] }, route, state()), false);
+  assert.equal(canAccessRoute(buyer(), { ...route, purchaseId: '' }, state()), false);
+  assert.equal(canAccessRoute(buyer(), { name: 'purchase', id: route.purchaseId, role: 'comprador' }, state()), false);
+});
+
+test('C1: el recorrido anterior de compras queda separado y requiere capacidad de comprador', () => {
+  const route = { name: 'purchasesDemo' };
+  assert.equal(canAccessRoute(buyer(), route, state()), true);
+  assert.equal(canAccessRoute(organizer(), route, state()), true);
+  assert.equal(canAccessRoute({ usuario: organizer().usuario, roles: [RolUsuario.ORGANIZADOR] }, route, state()), false);
+  assert.equal(canAccessRoute(null, route, state()), false);
+});
+
+test('C2: ruta de compras del evento solo admite organizador, mantiene IDs reales separados de la maqueta', () => {
+  const route = { name: 'publishedEvent', eventId: 'evento-real-api' };
+  assert.equal(canAccessRoute(buyer(), route, state()), false);
+  assert.equal(canAccessRoute(organizer(), route, state()), true);
+  assert.equal(canAccessRoute({ usuario: organizer().usuario, roles: [RolUsuario.ORGANIZADOR] }, route, state()), true);
+  assert.equal(canAccessRoute(organizer(), { ...route, eventId: ' ' }, state()), false);
+  assert.equal(canAccessRoute(organizer(), { name: 'organizerEvent', eventId: route.eventId }, state()), false);
+});
+
+test('C5: chat conectado requiere comprador y un ID real válido, sin resolver compras con fixtures', () => {
+  const route = { name: 'purchaseChat', purchaseId: 'compra-api' };
+  assert.equal(canAccessRoute(buyer(), route, state()), true);
+  assert.equal(canAccessRoute(organizer(), route, state()), true); // Puede chatear sobre sus compras como comprador.
+  assert.equal(canAccessRoute({ usuario: organizer().usuario, roles: ['ORGANIZADOR'] }, route, state()), false);
+  assert.equal(canAccessRoute(buyer(), { ...route, purchaseId: '' }, state()), false);
+  assert.equal(canAccessRoute(buyer(), { ...route, purchaseId: ' ' }, state()), false);
+  assert.equal(canAccessRoute(buyer(), { name: 'chat', id: route.purchaseId, role: 'comprador' }, state()), false);
+});
+
+test('C6: chat de venta exige organizador y los IDs del evento y compra, sin resolverlos como maqueta', () => {
+  const route = { name: 'saleChat', eventId: 'evento-api', purchaseId: 'compra-api' };
+  assert.equal(canAccessRoute(buyer(), route, state()), false);
+  assert.equal(canAccessRoute(organizer(), route, state()), true);
+  assert.equal(canAccessRoute({ usuario: organizer().usuario, roles: ['ORGANIZADOR'] }, route, state()), true);
+  for (const changes of [{ eventId: '' }, { eventId: ' ' }, { purchaseId: '' }, { purchaseId: ' ' }]) {
+    assert.equal(canAccessRoute(organizer(), { ...route, ...changes }, state()), false);
+  }
+  assert.equal(canAccessRoute(organizer(), { name: 'chat', id: route.purchaseId, role: 'organizador' }, state()), false);
+});
+
 test('comprador no crea ni administra eventos y organizador solo administra los propios', () => {
   assert.equal(canAccessRoute(buyer(), { name: 'create' }, state()), false);
   assert.equal(canAccessRoute(organizer(), { name: 'create' }, state()), true);

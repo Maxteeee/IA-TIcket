@@ -37,7 +37,7 @@ Base en JavaScript para desarrollar el trabajo práctico. El frontend es una app
 
 El backend implementa usuarios, categorías, eventos, compras y reseñas mediante rutas → controladores → servicios → dominio/repositorios. Los tipos de entrada pertenecen al evento; los mensajes e historial, a la compra. El [análisis del dominio y contrato de la API](backend/README.md) explica las operaciones, reglas y límites. Se conserva el ejemplo `items`.
 
-El frontend conecta **C3 y C11: búsqueda textual, categorías y ordenamiento** con la API; los demás recorridos conservan sus datos locales. Incluye **Comprador 1** y **Organizador 1**, con un botón superior para alternar y acciones según rol y propiedad. Para usar Explorar hay que iniciar el backend y configurar su dirección accesible desde el celular. Ver [perfiles y recorrido de prueba](frontend/README.md).
+El frontend conecta **C3, C11, C4, C12, C1, C2, C5 y C6: catálogo, publicación, compra, mis compras, ventas por evento y chat entre comprador y organizador** con la API; los demás recorridos conservan sus datos locales. Incluye **Comprador 1** y **Organizador 1**, con un botón superior para alternar y acciones según rol y propiedad. Hay que iniciar el backend y configurar su dirección accesible desde el celular. La compra permite elegir un tipo y cantidad, reserva cupo sin sobreventa y muestra un comprobante real; queda pendiente de pago, sin realizar un cobro. **Compras** muestra los registros del perfil activo, sus estados y días restantes para las confirmadas; desde cada compra se abre su conversación, disponible en cualquier estado y después del evento. **Organizar → Tus eventos publicados → evento** muestra sus compras y disponibilidad; el propietario puede abrir la conversación de cada compra y responder en el mismo historial del comprador. Ver [perfiles y recorrido de prueba](frontend/README.md).
 
 ## Requisitos
 
@@ -69,6 +69,8 @@ npm run backend
 ```
 
 Para probar C3/C11 con categorías, eventos y puntajes iniciales, usar `npm run backend:demo` en lugar del arranque vacío. El detalle del recorrido está en [frontend/README.md](frontend/README.md).
+
+Ambos modos preparan los perfiles Comprador 1/Organizador 1 y cinco categorías. El modo normal no precarga eventos: podés publicarlos desde Organizar.
 
 El servidor escucha en todas las interfaces en el puerto 3000 y muestra las direcciones de red de la computadora. Abrí `http://localhost:3000/api/health` en la computadora para comprobarlo.
 

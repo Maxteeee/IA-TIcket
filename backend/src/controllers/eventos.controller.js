@@ -5,7 +5,9 @@ export function createEventosController(service, { now }) {
   return {
     list: (req, res) => res.json(service.list(req.query).map(present)),
     get: (req, res) => res.json(present(service.get(req.params.id))),
-    create: (req, res) => res.status(201).json(present(service.create(req.body, req.get('X-Usuario-Id')))),
+    create: (req, res) => res.status(201).json(present(service.create(req.body, req.get('X-Usuario-Id'), {
+      idempotencyKey: req.get('Idempotency-Key'),
+    }))),
     update: (req, res) => res.json(present(service.update(req.params.id, req.body, req.get('X-Usuario-Id')))),
     delete(req, res) {
       service.delete(req.params.id, req.get('X-Usuario-Id'));

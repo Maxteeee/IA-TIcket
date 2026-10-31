@@ -1,5 +1,7 @@
 import { Evento } from './Evento.js';
 import { randomUUID } from 'node:crypto';
+import { RolUsuario } from './RolUsuario.js';
+import { DomainError } from './DomainError.js';
 
 export class Usuario {
   /**
@@ -7,15 +9,24 @@ export class Usuario {
    * @param {string} datos.nombre
    * @param {string} datos.apellido
    * @param {import('./Evento.js').Evento[]} [datos.favoritos]
+   * @param {string[]} [datos.roles] Capacidades no excluyentes; se asignan en el servidor.
    */
-  constructor({ id = randomUUID(), nombre, apellido, favoritos = [] }) {
+  constructor({ id = randomUUID(), nombre, apellido, favoritos = [], roles = [RolUsuario.COMPRADOR] }) {
+    if (!Array.isArray(roles) || roles.some((rol) => !Object.values(RolUsuario).includes(rol))) {
+      throw new DomainError('Roles de usuario inválidos');
+    }
     this.id = id;
     this.nombre = nombre;
     this.apellido = apellido;
+    this.roles = [...new Set(roles)];
     this.favoritos = [];
     for (const evento of favoritos) {
       this.agregarFavorito(evento);
     }
+  }
+
+  tieneRol(rol) {
+    return this.roles.includes(rol);
   }
 
   /** @param {import('./Evento.js').Evento} evento */

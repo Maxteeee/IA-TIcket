@@ -14,6 +14,13 @@ export const canReviewPurchase = (session, purchase, event) => Boolean(event && 
 export function canAccessRoute(session, route, { events, purchases }) {
   if (!session?.usuario?.id) return false;
   if (!route) return true;
+  if (route.name === 'purchasesDemo') return hasRole(session, RolUsuario.COMPRADOR);
+  if (['purchaseReceipt', 'purchaseChat'].includes(route.name)) return hasRole(session, RolUsuario.COMPRADOR)
+    && typeof route.purchaseId === 'string' && Boolean(route.purchaseId.trim());
+  if (route.name === 'saleChat') return canOrganize(session) && typeof route.eventId === 'string' && Boolean(route.eventId.trim())
+    && typeof route.purchaseId === 'string' && Boolean(route.purchaseId.trim());
+  if (route.name === 'organizerDemo') return canOrganize(session);
+  if (route.name === 'publishedEvent') return canOrganize(session) && typeof route.eventId === 'string' && Boolean(route.eventId.trim());
   if (route.name === 'catalogEvent') return hasRole(session, RolUsuario.COMPRADOR)
     && typeof route.eventId === 'string' && Boolean(route.eventId.trim());
   if (route.name === 'create') return canOrganize(session);

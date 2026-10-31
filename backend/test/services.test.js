@@ -3,15 +3,17 @@ import assert from 'node:assert/strict';
 import { createRepositories } from '../src/repositories/index.js';
 import { createServices } from '../src/services/index.js';
 import { compraDto, eventoDto } from '../src/http/presenters.js';
+import { Usuario } from '../src/domain/Usuario.js';
+import { RolUsuario } from '../src/domain/RolUsuario.js';
 
 function scenario({ cupo = 5, precio = 10.25 } = {}) {
   let instant = new Date('2026-11-01T12:00:00Z');
   const now = () => new Date(instant);
   const repositories = createRepositories();
   const services = createServices(repositories, { now });
-  const organizador = services.usuarios.create({ nombre: 'Ana', apellido: 'Pérez' });
+  const organizador = repositories.usuarios.save(new Usuario({ nombre: 'Ana', apellido: 'Pérez', roles: [RolUsuario.ORGANIZADOR] }));
   const comprador = services.usuarios.create({ nombre: 'Luis', apellido: 'Gómez' });
-  const tercero = services.usuarios.create({ nombre: 'Luis', apellido: 'Gómez' });
+  const tercero = repositories.usuarios.save(new Usuario({ nombre: 'Luis', apellido: 'Gómez', roles: [RolUsuario.ORGANIZADOR] }));
   const categoria = services.categorias.create({ nombre: 'Música' });
   const draft = {
     nombre: 'Concierto', descripcion: 'Canciones en vivo', categoriaId: categoria.id,
@@ -86,8 +88,8 @@ test('compras y ventas se consultan desde la perspectiva de su participante', ()
   const s = scenario();
   const compra = s.buy();
   assert.deepEqual(s.services.compras.list(s.comprador.id), [compra]);
-  assert.deepEqual(s.services.compras.list(s.tercero.id), []);
-  assert.deepEqual(s.services.compras.list(s.organizador.id), []);
+  assert.throws(() => s.services.compras.list(s.tercero.id), { status: 403 });
+  assert.throws(() => s.services.compras.list(s.organizador.id), { status: 403 });
   assert.deepEqual(s.services.compras.list(s.organizador.id, { eventoId: s.evento.id }), [compra]);
   assert.throws(() => s.services.compras.list(s.comprador.id, { eventoId: s.evento.id }), { status: 403 });
   assert.throws(() => s.services.compras.get(compra.id, s.tercero.id), { status: 403 });

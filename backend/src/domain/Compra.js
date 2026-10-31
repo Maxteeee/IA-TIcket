@@ -12,11 +12,14 @@ export class Compra {
    * @param {import('./TipoEntrada.js').TipoEntrada} datos.tipoEntrada
    * @param {number} datos.cantidad Cantidad entera de entradas.
    * @param {number} datos.total
+   * @param {number} [datos.precioUnitario] Precio al comprar, independiente de futuras ediciones.
+   * @param {string} [datos.tipoEntradaNombre] Nombre del tipo al comprar.
    * @param {import('./EstadoCompra.js').ValorEstadoCompra} datos.estado
    * @param {import('./Mensaje.js').Mensaje[]} [datos.mensajes]
    * @param {import('./CambioEstadoCompra.js').CambioEstadoCompra[]} [datos.historial]
    */
-  constructor({ id = randomUUID(), comprador, evento, tipoEntrada, cantidad, total, estado, mensajes = [], historial = [] }) {
+  constructor({ id = randomUUID(), comprador, evento, tipoEntrada, cantidad, total, estado,
+    precioUnitario = tipoEntrada?.precio, tipoEntradaNombre = tipoEntrada?.nombre, mensajes = [], historial = [] }) {
     if (!comprador) {
       throw new TypeError('La compra debe tener un comprador');
     }
@@ -39,6 +42,8 @@ export class Compra {
     this.tipoEntrada = tipoEntrada;
     this.cantidad = cantidad;
     this.total = total;
+    this.precioUnitario = precioUnitario;
+    this.tipoEntradaNombre = tipoEntradaNombre;
     this.estado = estado;
     this.mensajes = [];
     this.historial = [...historial];

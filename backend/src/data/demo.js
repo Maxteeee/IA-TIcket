@@ -1,29 +1,29 @@
-import { Categoria } from '../domain/Categoria.js';
 import { Usuario } from '../domain/Usuario.js';
 import { Evento } from '../domain/Evento.js';
 import { TipoEntrada } from '../domain/TipoEntrada.js';
 import { Compra } from '../domain/Compra.js';
 import { EstadoCompra } from '../domain/EstadoCompra.js';
 import { Resenia } from '../domain/Resenia.js';
+import { RolUsuario } from '../domain/RolUsuario.js';
+import { seedCategories } from './reference.js';
 
 // Solo se carga al iniciar el servidor con --demo o SEED_DEMO=true.
 // IDs estables y sin sobrescritura: volver a invocarlo conserva datos existentes.
 export function seedDemoData(repositories, { now = () => new Date() } = {}) {
   const saveIfMissing = (repository, entity) => repository.findById(entity.id) ?? repository.save(entity);
   const organizador = saveIfMissing(repositories.usuarios, new Usuario({
-    id: 'demo-organizador', nombre: 'Equipo', apellido: 'Encuentro',
+    id: 'demo-organizador', nombre: 'Equipo', apellido: 'Encuentro', roles: [RolUsuario.COMPRADOR, RolUsuario.ORGANIZADOR],
   }));
   const escena = saveIfMissing(repositories.usuarios, new Usuario({
-    id: 'demo-organizador-escena', nombre: 'Compañía', apellido: 'Umbral',
+    id: 'demo-organizador-escena', nombre: 'Compañía', apellido: 'Umbral', roles: [RolUsuario.ORGANIZADOR],
   }));
   const comunidad = saveIfMissing(repositories.usuarios, new Usuario({
-    id: 'demo-organizador-comunidad', nombre: 'Red', apellido: 'Abierta',
+    id: 'demo-organizador-comunidad', nombre: 'Red', apellido: 'Abierta', roles: [RolUsuario.ORGANIZADOR],
   }));
   const asistente = saveIfMissing(repositories.usuarios, new Usuario({
     id: 'demo-asistente', nombre: 'Asistente', apellido: 'Demo',
   }));
-  const categories = ['Música', 'Teatro', 'Festivales', 'Conferencias', 'Deportes'].map((nombre, index) =>
-    saveIfMissing(repositories.categorias, new Categoria({ id: `demo-categoria-${index + 1}`, nombre, descripcion: nombre })));
+  const categories = seedCategories(repositories);
   const dateInDays = (days) => {
     const date = new Date(now());
     date.setUTCDate(date.getUTCDate() + days);
