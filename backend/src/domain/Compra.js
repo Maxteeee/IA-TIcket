@@ -23,6 +23,9 @@ export class Compra {
     if (!comprador) {
       throw new TypeError('La compra debe tener un comprador');
     }
+    if (comprador === evento?.organizador) {
+      throw new DomainError('No podés comprar entradas para un evento propio', 409);
+    }
     if (!Array.isArray(evento?.tiposEntrada) || !evento.tiposEntrada.includes(tipoEntrada)) {
       throw new TypeError('El tipo de entrada debe pertenecer al evento de la compra');
     }

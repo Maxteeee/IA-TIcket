@@ -73,7 +73,7 @@ export function EventPoster({ event, large = false, compact = false, style }) {
     <View pointerEvents="none" style={{ position: 'absolute', width: large ? 90 : 54, height: large ? 90 : 54, backgroundColor: theme.accent, opacity: 0.17, right: 20, top: -20, transform: [{ rotate: '25deg' }] }} />
     {!compact ? <Text numberOfLines={1} style={{ color: theme.accent, fontSize: large ? 10 : 7, fontWeight: '700', letterSpacing: 1.7 }}>{theme.kicker}</Text> : null}
     <Text numberOfLines={2} allowFontScaling={false} style={{ color: theme.accent, fontSize: large ? 51 : compact ? 15 : 28, lineHeight: large ? 50 : compact ? 16 : 28, letterSpacing: -1.5, fontWeight: '900', marginTop: large ? 30 : compact ? 0 : 20 }}>{event.posterTitle ?? theme.title}</Text>
-    {!compact ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 'auto' }}><View style={{ width: 15, height: 1, backgroundColor: theme.accent }} /><Text style={{ color: theme.accent, fontSize: 7, letterSpacing: 1.4 }}>AI TICKET IT · {theme.number}</Text></View> : null}
+    {!compact ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 'auto' }}><View style={{ width: 15, height: 1, backgroundColor: theme.accent }} /><Text style={{ color: theme.accent, fontSize: 7, letterSpacing: 1.4 }}>IA Ticket IT · {theme.number}</Text></View> : null}
   </View>;
 }
 

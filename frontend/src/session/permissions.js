@@ -7,7 +7,7 @@ export const isOwnPurchase = (session, purchase) => Boolean(purchase && hasRole(
 export const canAccessPurchase = (session, purchase, event) => Boolean(purchase && event && purchase.eventoId === event.id
   && (isOwnPurchase(session, purchase) || canManageEvent(session, event)));
 export const canPurchase = (session, event, now = new Date()) => Boolean(event && hasRole(session, RolUsuario.COMPRADOR)
-  && !event.finalizadoDemo && new Date(event.fecha) > now);
+  && event.organizadorId !== session.usuario.id && !event.finalizadoDemo && new Date(event.fecha) > now);
 export const canReviewPurchase = (session, purchase, event) => Boolean(event && purchase?.eventoId === event.id
   && isOwnPurchase(session, purchase) && purchase.estado === 'UTILIZADA' && event.finalizadoDemo && !purchase.resenada);
 

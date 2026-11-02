@@ -1,6 +1,14 @@
 # Maqueta con sesiones de prueba
 
-La app usa dos perfiles locales, sin login. C3/C11 conectan Explorar, C4 publicación/eventos propios, C12 la compra, C1 mis compras, C2 ventas/disponibilidad, C5/C6 el chat C9/C10 las reseñas del comprador y experiencias anteriores, C7 la cancelación con reembolso simulado y C8 sus condiciones y seguimiento del organizador en el backend. Los demás recorridos mantienen sus datos de maqueta. Empieza como **Comprador 1**. La barra superior muestra la sesión activa y un botón **Cambiar a Organizador 1 / Comprador 1**, disponible tanto en las pestañas como en los detalles.
+## Arranque, SDK y conexión
+
+La [guía principal](../README.md) reúne requisitos, instalación de Expo Go **compatible con SDK 54**, comandos de cada módulo, LAN/túnel, archivos .env y diagnóstico de conexión. El frontend usa Expo SDK 54, React 19.1 y React Native 0.81.5; no se requiere instalar un SDK de Android en el celular. En Android físico, usar la [descarga oficial de Expo Go para SDK 54](https://expo.dev/go?sdkVersion=54&platform=android&device=true).
+
+Desde la raíz, `npm run backend` inicia la API en una terminal y `npm run frontend` inicia Metro por LAN en otra. Para el recorrido con túnel usado en este entorno, desde frontend ejecutar `npx expo start --go --tunnel`; limpiar caché con `--clear` si conserva una dirección anterior. Backend y frontend deben seguir funcionando simultáneamente. El túnel de Expo no expone la API: frontend/.env debe tener `EXPO_PUBLIC_API_URL=http://IP_ACCESIBLE:3000/api` y esa dirección debe responder `/api/health` desde el navegador del teléfono.
+
+En WSL usar la IP de Windows y el reenvío TCP3000 explicado en [backend/README.md](../backend/README.md#acceso-desde-el-celular-con-wsl). Cambiar `PUBLIC_API_URL` del backend solo informa una dirección al arrancar; no configura la app ni habilita puertos. Reiniciar la API pierde sus datos; recargar la app conserva lo guardado mientras viva el backend.
+
+La app **IA Ticket IT** usa dos perfiles locales, sin login. C3/C11 conectan Explorar, C4 publicación/eventos propios, C12 la compra, C1 mis compras, C2 ventas/disponibilidad, C5/C6 el chat C9/C10 las reseñas del comprador y experiencias anteriores, C7 la cancelación con reembolso simulado y C8 sus condiciones y seguimiento del organizador en el backend. Los demás recorridos mantienen sus datos de maqueta. Empieza como **Comprador 1**. La barra superior muestra la sesión activa y un botón **Cambiar a Organizador 1 / Comprador 1**, disponible tanto en las pestañas como en los detalles.
 
 | Perfil | Roles | Recorrido |
 | --- | --- | --- |
@@ -83,6 +91,8 @@ La misma publicación conserva una clave de reintento mientras no cambie su cont
 La lista de publicaciones propias es real y abre el panel de C2 con sus compras y disponibilidad; después de publicar conserva la confirmación **Tu evento fue publicado**. La edición básica de eventos y las ventas de la maqueta se conservan en **Organizar → Recorrer ventas de ejemplo**, separadas de las publicaciones y compras de API. C12 permite comprar desde el detalle público.
 
 ## C12: comprar un tipo de entrada y una cantidad
+
+**DD-07 — Eventos propios:** el perfil organizador conserva su rol de comprador para eventos ajenos. Al abrir una publicación propia se ve **Este evento es tuyo** y se consultan tipos/cupos, con compra y reintentos bloqueados. La API también rechaza autocompras con 409, sin reservar ni guardar. La [decisión de diseño](../backend/README.md#decisión-de-diseño-dd-07-no-comprar-entradas-de-eventos-propios) está confirmada y documentada en el backend; no se cancelan registros anteriores automáticamente.
 
 Con el backend activo y la dirección de API configurada:
 
@@ -303,3 +313,5 @@ Las pruebas usan el runner de Node, sin dependencias nuevas. Además de sesiones
 La exportación de Metro para Android/iOS verifica compilación y resolución de módulos; no sustituye la revisión de interacción en un dispositivo.
 
 Verificado para C8: 131 pruebas de frontend y 69 de backend correctas (200 en total). Se conserva la cobertura anterior y se agregan cancelación pendiente/confirmada, importe histórico simulado/cero y fecha/autor, cupo, corte exacto, utilizadas, permisos/cuerpo, respuesta perdida/recarga/concurrencia sin duplicados, reventa de cupo, historial y chat posterior. C8 agrega seguimiento del organizador por tipo y prueba de utilización/cancelación concurrentes con solo una transición válida. Exportaciones Metro de Android/iOS sin bytecode en `/tmp/ai-ticket-c8-android` y `/tmp/ai-ticket-c8-ios`; no son instalaciones en el celular. La interacción en dispositivo queda pendiente.
+
+Verificación de DD-07 y guía de arranque: 133 pruebas frontend y 70 backend correctas (203). Permisos bloquean eventos propios y conservan publicación/administración y compras ajenas. API rechaza autocompras con ambos roles y sin reservar cupo; formularios históricos de prueba usan eventos ajenos. Metro Android/iOS sin bytecode en /tmp/ai-ticket-dd07-android y /tmp/ai-ticket-dd07-ios; falta revisión de interacción en el dispositivo. La guía de SDK/enlaces oficiales se verificó el 2026-11-02 sin cambiar las dependencias.

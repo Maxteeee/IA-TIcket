@@ -201,6 +201,17 @@ test('ambos perfiles compran eventos futuros y las sesiones inválidas no habili
   assert.equal(canAccessRoute(buyer(), { name: 'desconocida' }, state()), false);
 });
 
+test('DD-07: un perfil con ambos roles consulta su publicación pero solo compra eventos ajenos', () => {
+  const now = new Date('2026-01-01T00:00:00Z');
+  const own = { ...otherEvent, organizadorId: organizer().usuario.id };
+  assert.equal(canPurchase(organizer(), own, now), false);
+  assert.equal(canManageEvent(organizer(), own), true);
+  assert.equal(canAccessRoute(organizer(), { name: 'catalogEvent', eventId: own.id }, state()), true);
+  assert.equal(canPurchase(buyer(), own, now), true);
+  assert.equal(canPurchase(organizer(), { ...own, organizadorId: 'otro-organizador' }, now), true);
+  assert.equal(canPurchase(buyer(), { ...own, organizadorId: buyer().usuario.id }, now), false);
+});
+
 test('los fixtures mantienen IDs únicos y asociaciones válidas de eventos, compras, mensajes y favoritos', () => {
   for (const collection of [initialEvents, initialPurchases, organizers]) {
     assert.equal(new Set(collection.map((item) => item.id)).size, collection.length);

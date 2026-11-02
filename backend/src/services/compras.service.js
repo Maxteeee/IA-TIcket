@@ -56,6 +56,8 @@ export function createComprasService(repositories, { now }) {
       if (idempotencyKey !== undefined && (typeof idempotencyKey !== 'string' || !/^[a-zA-Z0-9-]{1,100}$/.test(idempotencyKey))) {
         throw new DomainError('Idempotency-Key debe contener de 1 a 100 letras, números o guiones');
       }
+      const evento = required(eventos, data.eventoId, 'Evento');
+      conflict(evento.organizador === comprador, 'No podés comprar entradas para un evento propio');
       const key = idempotencyKey && `${comprador.id}:${idempotencyKey}`;
       const previous = key && attempts.get(key);
       if (previous) {
@@ -63,7 +65,6 @@ export function createComprasService(repositories, { now }) {
         conflict(!compras.findById(previous.compra.id), 'La compra anterior ya no está disponible');
         return previous.compra;
       }
-      const evento = required(eventos, data.eventoId, 'Evento');
       const ahora = now();
       if (evento.fecha <= ahora) throw new DomainError('No se pueden comprar entradas para un evento iniciado', 409);
       const tipoEntrada = evento.tiposEntrada.find((entrada) => entrada.id === data.tipoEntradaId);

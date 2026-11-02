@@ -85,9 +85,11 @@ test('C6: responder exige rol almacenado y relación con el evento, aun al reint
   assert.deepEqual(s.services.compras.listMessages(purchase.id, 'comprador-1'), [first]);
 });
 
-test('C6: una persona que organiza y compra su propio evento conserva acceso por cualquiera de sus relaciones válidas', () => {
+test('C6: una compra histórica con ambas relaciones conserva acceso sin habilitar nuevas autocompras', () => {
   const s = scenario();
-  const purchase = s.buy('organizador-1');
+  const purchase = s.buy();
+  // Representa un registro anterior a DD-07; no se crea por el POST de compras actual.
+  purchase.comprador = s.event.organizador;
   purchase.comprador.roles = [RolUsuario.ORGANIZADOR];
   const sent = s.services.compras.addMessage(purchase.id, { mensaje: 'Mensaje propio' }, 'organizador-1');
   assert.equal(s.services.compras.get(purchase.id, 'organizador-1'), purchase);

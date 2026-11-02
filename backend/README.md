@@ -2,6 +2,23 @@
 
 API Express en JavaScript, con almacenamiento en memoria. Desde la raíz: `npm install`, `npm run backend`. El arranque local prepara cinco categorías y los perfiles de prueba Comprador 1/Organizador 1, sin eventos. Los datos se pierden al reiniciar el proceso. El frontend ya consulta esta API para C3/C11, C4, C12, C1, C2, C5/C6 y C9/C10/C7/C8 (catálogo, publicación, compra, mis compras, ventas, chat, reseñas y cancelación/reembolso simulado); los demás recorridos conservan la maqueta local.
 
+## Acceso desde el celular con WSL
+
+El servidor escucha en `0.0.0.0:3000`. En WSL, que responda `localhost` en Windows no garantiza que responda desde otro dispositivo. El arranque distingue **API interna WSL** y la dirección pública configurada con `PUBLIC_API_URL` en backend/.env. Esta variable solo cambia el mensaje de arranque; el acceso depende de la configuración de red.
+
+Para el modo NAT de WSL, obtener la IPv4 de la conexión de Windows (`ipconfig`) y la IP actual de WSL (`hostname -I`). Desde PowerShell **como administrador**, reemplazar las dos direcciones de ejemplo y configurar únicamente el puerto de la API:
+
+```powershell
+$ipWindows = '192.168.1.100'
+$ipWsl = '172.18.61.7'
+netsh interface portproxy add v4tov4 listenaddress=$ipWindows listenport=3000 connectaddress=$ipWsl connectport=3000 protocol=tcp
+New-NetFirewallRule -Name IATicket-Api-WSL-3000 -DisplayName 'IA Ticket API WSL (TCP 3000, red local)' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3000 -LocalAddress $ipWindows -RemoteAddress LocalSubnet -Profile Any
+```
+
+El comando de firewall se usa al crear la regla por primera vez; si ya existe, comprobarla antes de agregar otra. Si cambia la IP de Windows o WSL, actualizar el reenvío y la regla correspondiente. No deshabilitar el firewall. El permiso de administrador lo solicita Windows.
+
+En backend/.env, configurar `PUBLIC_API_URL=http://IP_WINDOWS:3000/api`; en frontend/.env, `EXPO_PUBLIC_API_URL=http://IP_WINDOWS:3000/api`, con dos barras después de `http:`. Iniciar el backend con `npm run backend` desde la raíz. Desde el teléfono en la misma red, abrir `http://IP_WINDOWS:3000/api/health` y luego `/api/categorias`: deben responder JSON. Recargar la app después de actualizar la dirección (reiniciar solo Expo si conserva la configuración anterior). El túnel de Expo transporta la app, no la API. Reiniciar el backend borra sus datos en memoria.
+
 ## Catálogo de prueba para C3/C11
 
 `npm run backend:demo` desde la raíz inicia el servidor con categorías y eventos de prueba del propio backend. También puede activarse con `SEED_DEMO=true` en backend/.env. El arranque normal prepara solo referencias (categorías y perfiles); createApp no incorpora datos implícitos y las pruebas conservan instancias aisladas.
@@ -43,6 +60,14 @@ Cada recurso principal tiene archivos `*.routes.js`, `*.controller.js`, `*.servi
 Los repositorios conservan referencias canónicas para mantener la comparación por identidad del dominio existente. Sus métodos devuelven objetos de dominio para uso interno de los servicios. Los DTOs HTTP exponen IDs en las asociaciones, copian las colecciones y evitan ciclos como `Compra.historial → CambioEstadoCompra.compra`.
 
 No se crean entradas individuales: el estado de la compra se aplica a toda su cantidad, según la decisión existente. Tampoco se agregan entidades para búsquedas, filtros, roles o pagos.
+
+## Decisión de diseño DD-07: no comprar entradas de eventos propios
+
+**Confirmada por el usuario el 2026-11-02.** Una persona puede tener COMPRADOR y ORGANIZADOR y comprar eventos de otros organizadores. No puede crear una compra cuyo comprador sea el organizador del mismo evento, aunque tenga ambos roles. Se evita que sus propias compras distorsionen disponibilidad, ventas y futuras reseñas. Esta regla corresponde a C12 y no elimina el rol de comprador del organizador.
+
+El dominio Compra rechaza esa relación al construir una nueva compra. El servicio resuelve usuario/evento canónicos y verifica la restricción antes de recuperar un intento o reservar; POST /compras devuelve **409** con `No podés comprar entradas para un evento propio`. No crea compra, historial o reserva ni consume una clave de reintento fallida. El frontend permite consultar la publicación y sus entradas, muestra que el evento es propio y bloquea selección, cantidad, compra y reintento desde ese detalle, tanto conectado como de ejemplo.
+
+La regla se aplica a nuevas operaciones; no borra ni cancela automáticamente registros anteriores. Consultar una compra histórica y su chat sigue sujeto a sus permisos previos. Las pruebas de sesiones/compras personales ahora utilizan eventos ajenos; la cobertura de registros históricos no habilita crear autocompras por la API actual.
 
 ## Identidad de prueba
 
@@ -233,3 +258,5 @@ Desde la raíz: `npm test`. Se usan `node:test`, `node:assert/strict` y `fetch`,
 La cobertura incluye dominio previo, aislamiento de repositorios, cupos/precios, transiciones e historial, permisos de chat/ventas, asistencia y reputación, catálogo, favoritos, integridad de borrados, DTOs y dos solicitudes concurrentes por la última entrada. `createApp`, `createRepositories` y `createServices` permiten instancias aisladas y reloj inyectado.
 
 Verificación de C8: 69 pruebas backend y 131 frontend correctas (200 en total), conservando la cobertura anterior. Cancelación pendiente/confirmada, reembolso total histórico/cero y fecha/autor, corte exacto de inicio, utilizada, propiedad/rol/cuerpo, desborde de cupo sin cambios parciales, recuperación tras pérdida de respuesta/recarga, concurrencia y reventa sin duplicar cupo/historial ni importe; chat posterior y ventas actualizadas. C8 agrega pruebas de seguimiento del organizador y carrera utilización/cancelación, con una sola operación completada e historial/cupo consistentes. Exportaciones Android/iOS con Metro; sin prueba propia en celular.
+
+Verificación de DD-07 y guía de arranque: 70 pruebas backend + 133 frontend (203) correctas. Incluye rechazo de autocompra en dominio/POST con y sin clave, cupo/registros sin cambios, clave no consumida y compras permitidas en eventos ajenos con el mismo organizador. Pruebas históricas de chat y compras personales adaptadas sin habilitar nuevas autocompras. Metro Android/iOS exportados sin bytecode en /tmp/ai-ticket-dd07-android y /tmp/ai-ticket-dd07-ios; interacción propia en celular pendiente. Sin nuevas dependencias ni migración de SDK.

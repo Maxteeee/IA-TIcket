@@ -44,7 +44,11 @@ test('C1 punta a punta: recupera compras de C12 después de recargar y separa am
   const s = await setup(t);
   assert.deepEqual(await s.service.listOwn(s.buyer), []);
   const buyerPurchase = await s.buy();
-  const organizerPurchase = await s.buy(s.organizer);
+  const foreignOrganizer = s.repositories.usuarios.save(new Usuario({ nombre: 'Otro', apellido: 'Organizador', roles: [RolUsuario.ORGANIZADOR] }));
+  const foreignEvent = await createEventsService(s.client).create({ nombre: 'Evento ajeno para el organizador', descripcion: 'Compra personal',
+    fecha: '2026-11-04T20:00:00Z', categoriaId: 'demo-categoria-1', tiposEntrada: [{ nombre: 'General', precio: 10.25, cupo: 5 }] },
+    { usuario: { id: foreignOrganizer.id }, roles: [RolUsuario.ORGANIZADOR] });
+  const organizerPurchase = await s.service.create(preparePurchaseIntent(foreignEvent, foreignEvent.tiposEntrada[0].id, 1), s.organizer);
   const reloaded = createPurchasesService(s.client);
   assert.deepEqual(await reloaded.listOwn(s.buyer), [buyerPurchase]);
   assert.deepEqual(await reloaded.listOwn(s.organizer), [organizerPurchase]);

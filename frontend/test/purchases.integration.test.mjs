@@ -58,6 +58,26 @@ test('C12 punta a punta: compra un tipo publicado en C4, reserva su cupo y recup
   await assert.rejects(s.purchases.get(purchase.id, s.otherBuyer), { status: 403 });
 });
 
+test('DD-07 punta a punta: API rechaza compras propias con ambos roles y permite al mismo organizador comprar eventos ajenos', async (t) => {
+  const s = await setup(t);
+  const input = preparePurchaseIntent(s.event, s.event.tiposEntrada[0].id, 1);
+  for (const options of [{ usuarioId: s.organizer.usuario.id }, { usuarioId: s.organizer.usuario.id, idempotencyKey: 'compra-org' }]) {
+    await assert.rejects(s.client.post('/compras', input, options), { status: 409, message: 'No podés comprar entradas para un evento propio' });
+  }
+  await assert.rejects(s.purchases.create(input, s.organizer), { status: 409 });
+  assert.equal(s.purchases.getPending(s.organizer, s.event.id), null);
+  assert.deepEqual((await s.catalog.getEvent(s.event.id)).tiposEntrada.map((ticket) => ticket.cupo), [3, 2]);
+  assert.deepEqual(await s.purchases.listOwn(s.organizer), []);
+  const owner = s.repositories.usuarios.save(new Usuario({ nombre: 'Otro', apellido: 'Organizador', roles: [RolUsuario.ORGANIZADOR] }));
+  const foreign = await createEventsService(s.client).create({ nombre: 'Evento de otro organizador', descripcion: 'Compra habilitada',
+    categoriaId: 'demo-categoria-1', fecha: '2026-12-02T20:00:00Z', tiposEntrada: [{ nombre: 'General', precio: 10, cupo: 2 }] },
+    { usuario: { id: owner.id }, roles: [RolUsuario.ORGANIZADOR] });
+  const purchase = await s.purchases.create(preparePurchaseIntent(foreign, foreign.tiposEntrada[0].id, 1), s.organizer);
+  assert.equal(purchase.compradorId, s.organizer.usuario.id);
+  assert.equal(purchase.eventoId, foreign.id);
+  assert.equal((await s.catalog.getEvent(foreign.id)).tiposEntrada[0].cupo, 1);
+});
+
 test('C12 punta a punta: dos compradores compiten por la última entrada sin sobreventa', async (t) => {
   const s = await setup(t, 1);
   const intent = preparePurchaseIntent(s.event, s.event.tiposEntrada[0].id, 1);
