@@ -7,7 +7,7 @@ import { authMock } from '../src/services/auth.mock.js';
 const organizer = () => ({ ...authMock.getSession('organizador-1'), roles: ['ORGANIZADOR'] });
 const context = { role: 'organizador', eventId: 'evento-1' };
 const purchase = () => ({ id: 'compra-1', compradorId: 'comprador-1', eventoId: 'evento-1', tipoEntradaId: 'tipo-1', tipoEntradaNombre: 'General',
-  precioUnitario: 10, cantidad: 1, total: 10, estado: 'PENDIENTE', diasRestantes: null,
+  precioUnitario: 10, cantidad: 1, total: 10, estado: 'PENDIENTE', diasRestantes: null, puedeCancelar: false, reembolso: null, puedeReseniar: false,
   evento: { id: 'evento-1', nombre: 'Chat C6', fecha: '2026-12-01T20:00:00Z', organizadorId: 'organizador-1' } });
 const message = (changes = {}) => ({ id: 'mensaje-1', compraId: 'compra-1', usuarioId: 'comprador-1', mensaje: 'Consulta', enviado: '2026-11-01T12:00:00Z', ...changes });
 

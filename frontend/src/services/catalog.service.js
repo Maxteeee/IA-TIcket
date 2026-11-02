@@ -35,6 +35,23 @@ export function eventFromDto(dto) {
   };
 }
 
+export function previousReviewFromDto(dto) {
+  const hasId = (value) => typeof value === 'string' && value.trim().length > 0;
+  const hasDate = (value) => typeof value === 'string' && Number.isFinite(new Date(value).getTime());
+  if (!dto || !hasId(dto.id) || !hasId(dto.compradorId) || !hasId(dto.eventoId)
+    || !Number.isFinite(dto.puntuacion) || dto.puntuacion < 0 || dto.puntuacion > 5
+    || typeof dto.detalle !== 'string' || !dto.detalle.trim()
+    || dto.comprador?.id !== dto.compradorId || typeof dto.comprador?.nombre !== 'string' || !dto.comprador.nombre.trim()
+    || typeof dto.comprador.apellido !== 'string' || dto.evento?.id !== dto.eventoId
+    || typeof dto.evento?.nombre !== 'string' || !dto.evento.nombre.trim() || !hasId(dto.evento.organizadorId)
+    || !hasDate(dto.evento.fecha) || !hasDate(dto.evento.fechaFin)
+    || new Date(dto.evento.fechaFin) < new Date(dto.evento.fecha)) throw invalidResponse();
+  return { id: dto.id, compradorId: dto.compradorId, eventoId: dto.eventoId,
+    autor: `${dto.comprador.nombre} ${dto.comprador.apellido}`.trim(),
+    puntuacion: dto.puntuacion, detalle: dto.detalle,
+    evento: { ...dto.evento } };
+}
+
 export function createCatalogService(client = apiClient) {
   return {
     async getCategories(options) {
@@ -56,6 +73,11 @@ export function createCatalogService(client = apiClient) {
     },
     async getEvent(id, options) {
       return eventFromDto(await client.get(`/eventos/${encodeURIComponent(id)}`, options));
+    },
+    async getPreviousReviews(id, options) {
+      const reviews = await client.get(`/eventos/${encodeURIComponent(id)}/experiencias-anteriores`, options);
+      if (!Array.isArray(reviews)) throw invalidResponse();
+      return reviews.map(previousReviewFromDto);
     },
   };
 }

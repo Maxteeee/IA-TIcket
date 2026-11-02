@@ -23,6 +23,7 @@ import ConnectedCreateEventScreen from './screens/ConnectedCreateEventScreen';
 import ConnectedOrganizerScreen from './screens/ConnectedOrganizerScreen';
 import EventSalesScreen from './screens/EventSalesScreen';
 import PurchaseReceiptScreen from './screens/PurchaseReceiptScreen';
+import PurchaseReviewScreen from './screens/PurchaseReviewScreen';
 
 const initialFilters = { search: '', category: 'Todos', sort: 'fecha' };
 const tabs = [
@@ -137,9 +138,12 @@ export default function MockApp() {
   if (!canAccessRoute(session, route, { events, purchases: allPurchases })) {
     content = <EmptyState title="Esta vista no está disponible" description="Volvé al inicio para continuar con tu perfil activo." action="Ir al inicio" onAction={explore} />;
   } else if (route?.name === 'purchaseReceipt') {
-    content = <PurchaseReceiptScreen purchaseId={route.purchaseId} onBack={back}
+    content = <PurchaseReceiptScreen key={`${userId}:${route.purchaseId}`} purchaseId={route.purchaseId} onBack={back}
       onEvent={(eventId) => setStack([{ name: 'catalogEvent', eventId }])} onExplore={explore} onPurchases={showPurchases}
-      onChat={() => open('purchaseChat', { purchaseId: route.purchaseId })} />;
+      onChat={() => open('purchaseChat', { purchaseId: route.purchaseId })}
+      onReview={() => open('purchaseReview', { purchaseId: route.purchaseId })} />;
+  } else if (route?.name === 'purchaseReview') {
+    content = <PurchaseReviewScreen key={route.purchaseId} purchaseId={route.purchaseId} onBack={back} />;
   } else if (route?.name === 'purchaseChat') {
     content = <ConnectedChatScreen key={route.purchaseId} purchaseId={route.purchaseId} onBack={back} />;
   } else if (route?.name === 'saleChat') {

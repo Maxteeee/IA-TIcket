@@ -33,4 +33,12 @@ export class TipoEntrada {
     if (!this.hayCupoPara(cantidad)) throw new DomainError('No hay cupo suficiente', 409);
     this.cupo -= cantidad;
   }
+
+  devolver(cantidad) {
+    if (!Number.isSafeInteger(cantidad) || cantidad <= 0 || !Number.isSafeInteger(this.cupo) || this.cupo < 0
+      || !Number.isSafeInteger(this.cupo + cantidad)) {
+      throw new DomainError('No se puede devolver esta cantidad al cupo disponible', 409);
+    }
+    this.cupo += cantidad;
+  }
 }

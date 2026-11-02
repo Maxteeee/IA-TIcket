@@ -1,4 +1,4 @@
-import { eventoDto, reseniaDto, tipoEntradaDto } from '../http/presenters.js';
+import { eventoDto, experienciaAnteriorDto, reseniaDto, tipoEntradaDto } from '../http/presenters.js';
 
 export function createEventosController(service, { now }) {
   const present = (evento) => eventoDto(evento, now(), service.getReputation(evento));
@@ -22,6 +22,6 @@ export function createEventosController(service, { now }) {
       res.status(204).end();
     },
     listReviews: (req, res) => res.json(service.listReviews(req.params.id).map(reseniaDto)),
-    previousReviews: (req, res) => res.json(service.previousReviews(req.params.id).map(reseniaDto)),
+    previousReviews: (req, res) => res.json(service.previousReviews(req.params.id).map(experienciaAnteriorDto)),
   };
 }

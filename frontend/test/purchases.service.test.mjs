@@ -10,7 +10,7 @@ const event = () => ({ id: 'event', tiposEntrada: [{ id: 'general', nombre: 'Gen
 const intent = () => preparePurchaseIntent(event(), 'general', 3);
 const dto = (data = intent(), buyer = 'comprador-1') => ({ id: 'purchase', compradorId: buyer, eventoId: data.eventoId,
   tipoEntradaId: data.tipoEntradaId, tipoEntradaNombre: 'General', cantidad: data.cantidad,
-  precioUnitario: data.precioUnitarioEsperado, total: purchaseTotal(data.precioUnitarioEsperado, data.cantidad), estado: 'PENDIENTE', diasRestantes: null,
+  precioUnitario: data.precioUnitarioEsperado, total: purchaseTotal(data.precioUnitarioEsperado, data.cantidad), estado: 'PENDIENTE', diasRestantes: null, puedeCancelar: false, reembolso: null, puedeReseniar: false,
   evento: { id: data.eventoId, nombre: 'Evento de prueba', fecha: '2026-12-01T20:00:00Z', organizadorId: 'organizador-1' } });
 
 test('C12: selección válida envía IDs, cantidad y precio esperado, sin total ni comprador controlados por el cliente', () => {

@@ -46,6 +46,11 @@ export default function EventSalesScreen({ eventId, onBack, onViewPublic, onOpen
         <EventPoster event={{ ...data.evento, posterTitle: data.evento.nombre.toUpperCase() }} large style={{ height: 180, borderRadius: 20 }} />
         <View style={{ gap: 8 }}><Text style={ui.title}>{data.evento.nombre}</Text><Text style={ui.text}>{dateLabel(data.evento.fecha, { weekday: 'long', year: 'numeric' })}</Text></View>
         {onViewPublic && hasRole(session, RolUsuario.COMPRADOR) ? <Button title="Ver publicación en el catálogo" secondary onPress={onViewPublic} /> : null}
+        <View style={ui.card}>
+          <Text style={ui.heading}>Cancelaciones de compradores</Text>
+          <Text style={ui.text}>Cada comprador puede cancelar su compra antes del inicio del evento, siempre que las entradas no hayan sido utilizadas.</Text>
+          <Text style={ui.caption}>Las entradas canceladas vuelven al cupo disponible. Si la compra estaba confirmada, se registra el reembolso simulado del total original.</Text>
+        </View>
         <View style={{ gap: 13 }}><Text style={ui.heading}>Entradas disponibles</Text>
           <Text style={ui.caption}>Disponibilidad actual. Las compras pendientes de pago ya reservan sus entradas.</Text>
           {data.evento.tiposEntrada.map((ticket) => <View key={ticket.id} style={[ui.card, { flexDirection: 'row', alignItems: 'center', gap: 16 }]}>
@@ -66,7 +71,8 @@ export default function EventSalesScreen({ eventId, onBack, onViewPublic, onOpen
         <Text style={ui.label}>{`${item.comprador.nombre} ${item.comprador.apellido}`.trim()}</Text>
         <Text style={ui.text}>{item.tipoEntradaNombre} · {item.cantidad} {item.cantidad === 1 ? 'entrada' : 'entradas'}</Text>
         <Text style={ui.caption}>{money(item.precioUnitario)} por entrada al comprar</Text>
-        <View style={ui.between}><Text style={ui.label}>Total registrado</Text><Text style={[ui.heading, { color: colors.primary }]}>{money(item.total)}</Text></View>
+        <View style={ui.between}><Text style={ui.label}>Total simulado</Text><Text style={[ui.heading, { color: colors.primary }]}>{money(item.total)}</Text></View>
+        {item.reembolso ? <Text style={[ui.label, { color: colors.success }]}>Reembolso simulado: {money(item.reembolso.importe)}</Text> : null}
         {onOpenChat ? <Button title="Abrir conversación" secondary icon="chat" onPress={() => onOpenChat(item.id)} /> : null}
       </View>}
       ListEmptyComponent={loading ? <View accessibilityRole="progressbar" style={{ alignItems: 'center', gap: 12 }}><ActivityIndicator color={colors.primary} /><Text style={ui.text}>Cargando compras y disponibilidad…</Text></View>

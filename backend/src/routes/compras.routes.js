@@ -6,6 +6,7 @@ export function createComprasRouter(controller) {
   router.post('/', controller.create);
   router.get('/:id', controller.get);
   router.patch('/:id/estado', controller.updateState);
+  router.post('/:id/cancelacion', controller.cancel);
   router.get('/:id/mensajes', controller.listMessages);
   router.post('/:id/mensajes', controller.addMessage);
   router.get('/:id/historial', controller.listHistory);

@@ -6,7 +6,7 @@ import { remainingDaysLabel } from '../src/utils/purchasePresentation.js';
 
 const session = () => authMock.getSession('comprador-1');
 const dto = (changes = {}) => ({ id: 'compra-1', compradorId: 'comprador-1', eventoId: 'evento-1', tipoEntradaId: 'tipo-1',
-  tipoEntradaNombre: 'General', cantidad: 2, precioUnitario: 10.25, total: 20.5, estado: 'CONFIRMADA', diasRestantes: 2,
+  tipoEntradaNombre: 'General', cantidad: 2, precioUnitario: 10.25, total: 20.5, estado: 'CONFIRMADA', diasRestantes: 2, puedeCancelar: false, reembolso: null, puedeReseniar: false,
   evento: { id: 'evento-1', nombre: 'Concierto', fecha: '2026-12-01T21:00:00Z', organizadorId: 'organizador-1' }, ...changes });
 
 test('C1: lista propia envía identidad y cancelación, sin filtros de ventas ni consultas al catálogo', async () => {

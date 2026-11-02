@@ -9,7 +9,7 @@ function dto(eventId = 'evento-1') {
   const event = { id: eventId, organizadorId: 'organizador-1', nombre: 'Encuentro C2', fecha: '2026-12-01T20:00:00Z',
     tiposEntrada: [{ id: 'tipo-1', nombre: 'General', precio: 10, cupo: 1 }, { id: 'tipo-2', nombre: 'VIP', precio: 20, cupo: 0 }] };
   return { evento: event, compras: [{ id: 'compra-1', compradorId: 'comprador-1', eventoId: eventId, tipoEntradaId: 'tipo-1', tipoEntradaNombre: 'General',
-    precioUnitario: 10, cantidad: 2, total: 20, estado: 'PENDIENTE', diasRestantes: null,
+    precioUnitario: 10, cantidad: 2, total: 20, estado: 'PENDIENTE', diasRestantes: null, puedeCancelar: false, reembolso: null, puedeReseniar: false,
     evento: { id: eventId, nombre: event.nombre, fecha: event.fecha, organizadorId: event.organizadorId }, comprador: { id: 'comprador-1', nombre: 'Comprador 1', apellido: '' } }] };
 }
 

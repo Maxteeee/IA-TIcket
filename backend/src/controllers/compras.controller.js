@@ -13,6 +13,7 @@ export function createComprasController(service, { now }) {
       idempotencyKey: req.get('Idempotency-Key'),
     }), now())),
     updateState: (req, res) => res.json(compraDto(service.updateState(req.params.id, req.body, req.get('X-Usuario-Id')), now())),
+    cancel: (req, res) => res.json(compraDto(service.cancel(req.params.id, req.body, req.get('X-Usuario-Id')), now())),
     listMessages: (req, res) => res.json(service.listMessages(req.params.id, req.get('X-Usuario-Id')).map((mensaje) => mensajeDto(mensaje, req.params.id))),
     addMessage: (req, res) => res.status(201).json(mensajeDto(service.addMessage(req.params.id, req.body, req.get('X-Usuario-Id'), {
       idempotencyKey: req.get('Idempotency-Key'),

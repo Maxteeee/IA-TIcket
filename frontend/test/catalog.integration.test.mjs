@@ -158,3 +158,43 @@ test('C11 punta a punta: los empates se resuelven por fecha y luego ID de forma 
     assert.deepEqual(events.map((event) => event.id), ['empate-primero', 'empate-a', 'empate-z']);
   }
 });
+
+test('C10 punta a punta: cada evento muestra experiencias del mismo organizador con autor, origen y puntaje real', async (t) => {
+  const s = await setup(t);
+  const concert = await s.service.getPreviousReviews('demo-concierto');
+  assert.deepEqual(concert.map((review) => review.id), ['demo-resenia-1', 'demo-resenia-2']);
+  assert.deepEqual(await s.service.getPreviousReviews('demo-festival'), concert);
+  assert.ok(concert.every((review) => review.autor === 'Asistente Demo' && review.evento.nombre === 'Noche de vinilos'
+    && review.evento.organizadorId === 'demo-organizador' && review.detalle === 'Experiencia de demostración'));
+  const theater = await s.service.getPreviousReviews('demo-teatro');
+  assert.equal(theater.length, 1);
+  assert.equal(theater[0].puntuacion, 0);
+  assert.equal(theater[0].evento.nombre, 'La primera función');
+  assert.ok(s.calls.every(({ options }) => !Object.hasOwn(options.headers, 'X-Usuario-Id')));
+  assert.ok(s.calls.every(({ options }) => options.signal instanceof AbortSignal));
+});
+
+test('C10 punta a punta: vacío, evento ausente y error de carga se distinguen sin fixtures de respaldo', async (t) => {
+  const s = await setup(t);
+  assert.deepEqual(await s.service.getPreviousReviews('demo-conferencia'), []);
+  assert.deepEqual(await s.service.getPreviousReviews('demo-pasado'), []);
+  // Promedio global con reseñas del propio evento, pero ninguna experiencia anterior a él.
+  assert.equal((await s.service.getEvent('demo-pasado')).organizador.cantidadResenias, 2);
+  await assert.rejects(s.service.getPreviousReviews('inexistente'), { status: 404 });
+  s.repositories.eventos.delete('demo-deporte');
+  await assert.rejects(s.service.getPreviousReviews('demo-deporte'), { status: 404 });
+});
+
+test('C10 punta a punta: volver a consultar refleja edición y borrado reales sin recalcular promedio con la lista visible', async (t) => {
+  const s = await setup(t);
+  await s.service.getPreviousReviews('demo-concierto');
+  s.services.resenias.update('demo-resenia-1', { detalle: 'Comentario actualizado', puntuacion: 3.5 }, 'demo-asistente');
+  const [updated] = await s.service.getPreviousReviews('demo-concierto');
+  assert.equal(updated.detalle, 'Comentario actualizado');
+  assert.equal(updated.puntuacion, 3.5);
+  s.services.resenias.delete('demo-resenia-2', 'demo-asistente');
+  assert.equal((await s.service.getPreviousReviews('demo-concierto')).length, 1);
+  assert.equal((await s.service.getEvent('demo-concierto')).organizador.puntaje, 3.5);
+  s.services.resenias.delete('demo-resenia-1', 'demo-asistente');
+  assert.deepEqual(await s.service.getPreviousReviews('demo-concierto'), []);
+});

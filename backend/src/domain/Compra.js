@@ -45,6 +45,7 @@ export class Compra {
     this.precioUnitario = precioUnitario;
     this.tipoEntradaNombre = tipoEntradaNombre;
     this.estado = estado;
+    this.reembolso = null;
     this.mensajes = [];
     this.historial = [...historial];
 
@@ -101,7 +102,7 @@ export class Compra {
       [EstadoCompra.CONFIRMADA]: EstadoCompra.UTILIZADA,
     };
     if (siguiente[this.estado] !== estado) {
-      throw new DomainError('Transición de estado no permitida; cancelación y reembolso siguen pendientes de definición', 409);
+      throw new DomainError('Transición de estado no permitida', 409);
     }
     this.estado = estado;
     this.registrarEstado(quien, fechaHora);
@@ -111,6 +112,32 @@ export class Compra {
     return usuario === this.comprador
       && this.estado === EstadoCompra.UTILIZADA
       && this.evento.haFinalizado(ahora);
+  }
+
+  puedeCancelar(usuario, ahora) {
+    return usuario === this.comprador
+      && [EstadoCompra.PENDIENTE, EstadoCompra.CONFIRMADA].includes(this.estado)
+      && ahora < this.evento.fecha;
+  }
+
+  cancelar(quien, ahora) {
+    if (quien !== this.comprador) throw new DomainError('Solo el comprador puede cancelar su compra', 403);
+    // Recuperar el resultado también después del inicio, sin repetir devolución ni historial.
+    if ([EstadoCompra.CANCELADA, EstadoCompra.REEMBOLSADA].includes(this.estado)) return this;
+    if (!this.puedeCancelar(quien, ahora)) {
+      throw new DomainError('Solo se puede cancelar una compra pendiente o confirmada antes del inicio del evento', 409);
+    }
+    const estabaConfirmada = this.estado === EstadoCompra.CONFIRMADA;
+    // Valida el cupo antes de modificar estado, historial o devolución simulada.
+    this.tipoEntrada.devolver(this.cantidad);
+    this.estado = EstadoCompra.CANCELADA;
+    this.registrarEstado(quien, ahora);
+    if (estabaConfirmada) {
+      this.reembolso = { importe: this.total, fecha: new Date(ahora), simulado: true };
+      this.estado = EstadoCompra.REEMBOLSADA;
+      this.registrarEstado(quien, ahora);
+    }
+    return this;
   }
 
   diasRestantes(ahora = new Date()) {

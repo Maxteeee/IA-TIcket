@@ -1,12 +1,12 @@
 # Backend de entradas
 
-API Express en JavaScript, con almacenamiento en memoria. Desde la raíz: `npm install`, `npm run backend`. El arranque local prepara cinco categorías y los perfiles de prueba Comprador 1/Organizador 1, sin eventos. Los datos se pierden al reiniciar el proceso. El frontend ya consulta esta API para C3/C11, C4, C12, C1, C2, C5 y C6 (catálogo, publicación, compra, mis compras, ventas/disponibilidad por evento y chat entre comprador y organizador); los demás recorridos conservan la maqueta local.
+API Express en JavaScript, con almacenamiento en memoria. Desde la raíz: `npm install`, `npm run backend`. El arranque local prepara cinco categorías y los perfiles de prueba Comprador 1/Organizador 1, sin eventos. Los datos se pierden al reiniciar el proceso. El frontend ya consulta esta API para C3/C11, C4, C12, C1, C2, C5/C6 y C9/C10/C7/C8 (catálogo, publicación, compra, mis compras, ventas, chat, reseñas y cancelación/reembolso simulado); los demás recorridos conservan la maqueta local.
 
 ## Catálogo de prueba para C3/C11
 
 `npm run backend:demo` desde la raíz inicia el servidor con categorías y eventos de prueba del propio backend. También puede activarse con `SEED_DEMO=true` en backend/.env. El arranque normal prepara solo referencias (categorías y perfiles); createApp no incorpora datos implícitos y las pruebas conservan instancias aisladas.
 
-`src/data/demo.js` carga cinco categorías y siete eventos (cinco futuros y dos pasados), con fechas relativas y tipos de entrada. Usa IDs estables, conserva referencias canónicas y no sobrescribe registros existentes. Todos los datos siguen siendo temporales en memoria. Incluye tres organizadores: Equipo Encuentro con promedio 4,5 de dos reseñas; Compañía Umbral con una reseña de 0; Red Abierta sin reseñas. Las tres reseñas históricas se vinculan con compras utilizadas de los eventos pasados; permiten probar C11 sin integrar todavía C9. No usa fixtures del frontend ni incorpora autenticación o pagos. C4 permite ahora crear eventos desde la app.
+`src/data/demo.js` carga cinco categorías y siete eventos (cinco futuros y dos pasados), con fechas relativas y tipos de entrada. Usa IDs estables, conserva referencias canónicas y no sobrescribe registros existentes. Todos los datos siguen siendo temporales en memoria. Incluye tres organizadores: Equipo Encuentro con promedio 4,5 de dos reseñas; Compañía Umbral con una reseña de 0; Red Abierta sin reseñas. Las tres reseñas históricas se vinculan con compras utilizadas de los eventos pasados y permiten probar C11; no sustituyen la publicación real de C9. No usa fixtures del frontend ni incorpora autenticación o pagos. C4 permite crear eventos desde la app.
 
 El listado y el detalle de eventos agregan resúmenes `categoria: {id, nombre, descripcion}` y `organizador: {id, nombre, apellido, roles, puntaje, cantidadResenias}` a sus DTOs, conservando `categoriaId` y `organizadorId`. Así la pantalla muestra nombres reales sin consultar todos los usuarios ni inventar asociaciones por nombre. `puntaje` es el promedio de todas las reseñas recibidas por ese organizador, o null si no tiene; `cantidadResenias` es el conteo real. El servicio utiliza la misma regla para ordenar y para construir estos datos, sin almacenar un promedio que pueda quedar desactualizado.
 
@@ -87,6 +87,7 @@ Todas las rutas siguientes llevan prefijo `/api`. `PATCH` modifica únicamente l
 | GET, POST | `/compras` | Mis compras/crear una compra propia |
 | GET | `/compras/:id` | Detalle, solo para comprador u organizador |
 | PATCH | `/compras/:id/estado` | Confirmación/utilización manual por el organizador |
+| POST | `/compras/:id/cancelacion` | C7: cancelación propia, devolución de cupo y reembolso simulado si estaba confirmada |
 | GET, POST | `/compras/:id/mensajes` | Consultar/agregar mensajes, solo participantes |
 | GET | `/compras/:id/historial` | Cambios con estado, autor y fecha, solo participantes |
 | GET, POST | `/resenias` | Listar/crear reseña con asistencia acreditada |
@@ -134,7 +135,7 @@ Cambio de estado, con `X-Usuario-Id` del organizador: `{"estado":"CONFIRMADA"}` 
 - `orden=fecha` (predeterminado): fecha ascendente. `orden=precio`: mínimo ascendente. `orden=puntaje`: promedio del organizador descendente, sin reseñas al final. Desempates por fecha y luego ID.
 - El catálogo muestra eventos que todavía no comenzaron; `incluirPasados=true` permite recuperar todos, útil para el panel del organizador.
 - `/compras?estado=CONFIRMADA`: mis compras filtradas. `/compras?eventoId=ID&estado=PENDIENTE`: ventas de un evento propio.
-- `/resenias?eventoId=ID&organizadorId=ID`: filtros opcionales y combinables.
+- `/resenias?eventoId=ID&organizadorId=ID&compraId=ID`: filtros opcionales y combinables. C9 usa compraId para recuperar las reseñas de la compra seleccionada.
 
 ### C1: mis compras
 
@@ -166,7 +167,50 @@ El servicio frontend usa la perspectiva comprador de C5 por defecto. C6 pasa `ro
 
 El chat compartido actualiza al abrir, volver del segundo plano o solicitar actualización; no agrega WebSocket, notificaciones ni polling. Historial y claves del servidor duran durante su proceso; reiniciar borra ambos. La clave pendiente del cliente sobrevive navegación/perfil en la misma ejecución, pero no una recarga completa.
 
-### Reglas compartidas de dominio
+### C9: puntuar y comentar una compra utilizada
+
+`POST /resenias` exige identidad de prueba, rol COMPRADOR almacenado y que la compra pertenezca a esa identidad. El cuerpo solo admite compraId, puntuacion numérica entre 0 y 5 (incluye cero y fracciones) y detalle obligatorio de 1–1500 caracteres tras trim. Evento y comprador se derivan de la compra; no se aceptan autores ni eventos arbitrarios.
+
+Se conserva DD-02: la compra debe estar UTILIZADA y el evento debe haber finalizado. El mecanismo existente es fechaFin explícita alcanzada por el reloj del servidor. Sin fechaFin no se presume finalización por haber pasado el inicio. El DTO de compra incorpora `puedeReseniar`, derivado por el dominio en cada consulta; el frontend lo valida y usa para habilitar el formulario, y el POST vuelve a verificar la regla frente a cambios entre consulta y publicación. La reseña no modifica cupo, estado, total ni historial de la compra.
+
+La consulta pública existente de reseñas agrega el filtro compraId. La pantalla C9 primero consulta el detalle privado para comprobar propiedad y luego recupera las reseñas de esa compra, validando autor/evento/asociación. C10 presenta las experiencias anteriores desde el detalle público del evento, como se describe a continuación. El puntaje y conteo de C11 se actualizan con las reseñas reales por su cálculo ya existente.
+
+El POST admite Idempotency-Key opcional, validada como las otras publicaciones y limitada a comprador/compra. Repetir clave y contenido normalizado devuelve la misma reseña sin duplicarla ni inflar el promedio; cambiar contenido da 409. Si la reseña fue borrada por la API existente, esa clave no la recrea. Fallos de validación no guardan ni consumen la clave. La app conserva el intento incierto en memoria al navegar/cambiar perfil, sin persistencia tras una recarga completa.
+
+**Cantidad por compra pendiente de definición:** se consultó al usuario y se conserva la regla previa del backend, que permite varias reseñas. No se agregó unicidad por compra ni por usuario/evento. Un reintento de la misma operación no es una segunda reseña. No se incorporan edición/borrado desde la app, límites nuevos de frecuencia, cierre manual del evento ni registro de uso desde UI; para probarlos se usan las operaciones de backend ya existentes descritas en frontend/README.md.
+
+### C10: experiencias de eventos anteriores del organizador
+
+`GET /eventos/:id/experiencias-anteriores` es público y conserva su selección previa: reseñas del mismo organizador, de un evento distinto con inicio anterior al evento consultado y finalización explícita alcanzada (`fechaFin <= ahora`). Comparte un instante del reloj del servidor para toda la consulta. No restringe por categoría ni exige que el visitante haya comprado. Excluye el propio evento, eventos simultáneos/posteriores y aquellos sin fechaFin o aún en curso. Devuelve `[]` si no hay experiencias elegibles y 404 si el evento consultado no existe.
+
+El controlador usa `experienciaAnteriorDto` en `http/presenters.js`: conserva los campos de reseña `{id, compradorId, eventoId, compraId, detalle, puntuacion}` y agrega `comprador: {id, nombre, apellido}` y `evento: {id, nombre, organizadorId, fecha, fechaFin}`. No serializa las entidades, roles, chat ni detalle de compra; las otras respuestas de reseñas conservan su contrato. No hay consultas adicionales por tarjeta ni nuevas entidades/repositorios.
+
+El detalle conectado consume esta ruta mediante catalog.service y muestra autor, puntuación 0–5, comentario y nombre/fecha del evento de origen. Las publicaciones C9 quedan disponibles en siguientes eventos del organizador al consultar otra vez. El puntaje/conteo general C11 se sigue calculando sobre todas sus reseñas; puede diferir del conjunto de experiencias anteriores visible en una publicación. No se recalcula a partir de esta lista ni se agrega unicidad, ordenamiento o paginación de reseñas.
+
+### C7: cancelar y obtener un reembolso simulado
+
+`POST /compras/:id/cancelacion`, con `X-Usuario-Id` del comprador y cuerpo `{}`, devuelve 200 con el DTO actualizado. No acepta importe, estado, comprador, cupo ni fecha elegidos por el cliente. Requiere usuario existente, rol COMPRADOR almacenado y propiedad de la compra; el organizador no puede cancelar compras de otros usuarios. Organizador 1 sí puede cancelar una compra personal por su capacidad de comprador.
+
+Reglas confirmadas por el usuario para esta entrega: solo una compra PENDIENTE o CONFIRMADA y estrictamente antes del inicio (`ahora < evento.fecha`). No depende de fechaFin. Utilizadas y solicitudes nuevas desde el instante de inicio se rechazan con 409 sin modificar cupo, estado ni historial. Estas son también las restricciones de C8 necesarias para ejecutar C7; no se agregó una configuración ni acción de cancelación del organizador.
+
+| Estado previo | Resultado | Cupo | Reembolso |
+| --- | --- | --- | --- |
+| PENDIENTE | CANCELADA | Devuelve toda la cantidad al mismo tipo | Ninguno: no había pago confirmado |
+| CONFIRMADA | CANCELADA → REEMBOLSADA | Devuelve toda la cantidad al mismo tipo | Total original completo, simulado, incluido cero |
+
+`Compra.cancelar` conserva el precio, nombre del tipo, cantidad y total históricos. `TipoEntrada.devolver` valida cantidad y precisión segura antes de modificar cupo; la operación síncrona no tiene await entre validación, devolución y estados. Se registran CANCELADA y, si corresponde, REEMBOLSADA con comprador y fecha del servidor. El reembolso es un registro embebido en Compra, no una entidad/repositorio nuevo. No hay pasarela, transferencia, comisiones ni movimiento real de dinero: todos los importes son simulados, conforme a lo confirmado por el usuario.
+
+DTO de compras (creación/lista/detalle/ventas/cancelación) agrega `puedeCancelar`, derivado de dominio y reloj del servidor, y `reembolso`, null o `{importe, fecha: ISO, simulado: true}`. El importe es el total histórico, aunque se editen precios después. Datos históricos que solo tenían estado REEMBOLSADA sin registro conservan null; no se inventan devoluciones. La app distingue ese contrato y exige un registro válido para confirmar el éxito de una nueva cancelación reembolsada.
+
+Cancelar de nuevo una compra CANCELADA/REEMBOLSADA recupera el resultado existente, aun después del inicio, sin repetir cupo, importe ni historial. Se verifican identidad/rol/propiedad antes de recuperar. No se necesita Idempotency-Key para esta operación terminal. El PATCH manual de estados conserva exclusivamente confirmación/utilización; no permite saltarse la cancelación mediante un estado arbitrario. Chat e historial permanecen disponibles para sus participantes después de cancelar.
+
+### C8: condiciones garantizadas para las cancelaciones del comprador
+
+C8 comparte `Compra.puedeCancelar/cancelar`, el servicio y POST de C7. No agrega otra entidad, endpoint o aprobación del organizador. La regla acordada es estrictamente antes del inicio, para pendientes/confirmadas propias y no utilizadas; se aplica al ejecutar aunque el frontend conserve una elegibilidad anterior. FechaFin no amplía el plazo. El organizador puede consultar estado, disponibilidad y reembolso simulado en el resumen privado de ventas; no puede cancelar compras ajenas.
+
+La misma operación síncrona protege la carrera entre utilizar y cancelar: ambas solicitudes no pueden completar su transición sobre la misma compra. Si utilizar gana, cancelar devuelve 409 sin devolución ni reembolso; si cancelar gana, utilizar devuelve 409 y solo hay una devolución de cupo/reembolso. Los reintentos de una cancelación ya completada recuperan su resultado sin iniciar una cancelación nueva después del plazo. C8 conserva las garantías de C7 y su historial.
+
+### Reglas compartidas
 
 - **Compra:** rol COMPRADOR, tipo perteneciente al evento, evento aún no iniciado y cantidad entera positiva. Total calculado en centavos, sin confiar en valores del cliente; precio unitario, nombre del tipo y total se conservan aunque se edite la entrada. Si se envía precio esperado y difiere del vigente, se rechaza sin reservar. Los precios admiten hasta dos decimales y los importes están limitados por la precisión segura de JavaScript.
 - **Cupo:** provisionalmente se reserva al crear `PENDIENTE`; confirmar y utilizar no vuelven a descontar. Comprobación, reserva y guardado son síncronos dentro del mismo proceso. Esto evita sobreventa en este servidor en memoria; no es una transacción distribuida.
@@ -178,9 +222,9 @@ El chat compartido actualiza al abrir, volver del segundo plano o solicitar actu
 - **Integridad:** no se borra categoría usada, usuario con eventos/compras/reseñas, evento con compras/reseñas ni tipo con compras. Siempre queda al menos un tipo por evento. Borrar un evento sin compras limpia favoritos. Reprogramar un evento con compras se rechaza hasta definir ese flujo.
 - **Edición de cupo:** `cupo` representa disponibilidad restante, no capacidad inicial. Actualizarlo establece la disponibilidad restante deseada. Una edición de tipos mantiene su ID y las referencias de compras anteriores.
 
-La reserva en pendientes, el circuito manual, `fechaFin`, los redondeos y desempates son elecciones de esta implementación, diferenciadas de las decisiones previas confirmadas por el usuario. La consulta sobre el momento de descontar cupo queda abierta a su respuesta.
+La reserva en pendientes, el circuito manual, `fechaFin`, los redondeos y desempates son elecciones de esta implementación, diferenciadas de las decisiones previas confirmadas por el usuario. La consulta sobre el momento de descontar cupo queda abierta a su respuesta. Para C7 sí quedaron confirmados corte antes del inicio, devolución de cupo una vez, pendientes sin reembolso y confirmadas con reembolso total simulado.
 
-**Pendientes expresamente conservados:** cancelación/reembolso y devolución/expiración de reservas. No se expone borrado de compras ni edición libre de cantidad, total o asociaciones, porque eluden esas reglas y destruyen trazabilidad. Los estados `CANCELADA` y `REEMBOLSADA` siguen en el enum para el dominio, pero la API no los genera todavía. Las reservas pendientes no caducan por ahora. Tampoco se implementaron pagos, autenticación, almacenamiento persistente ni integración de los demás flujos de la maqueta; C3/C11/C4/C12/C1/C2/C5/C6 sí consumen la API.
+**Pendientes conservados:** expiración automática de reservas y unicidad de reseñas. No se expone borrado de compras ni edición libre de cantidad, total o asociaciones. Las reservas pendientes no caducan; C7 permite cancelarlas y devolver cupo. No hay pagos reales ni autenticación/persistencia; los importes a pagar/reembolsar son siempre simulados. C3/C11/C4/C12/C1/C2/C5/C6/C9/C10/C7/C8 consumen la API.
 
 ## Verificación
 
@@ -188,4 +232,4 @@ Desde la raíz: `npm test`. Se usan `node:test`, `node:assert/strict` y `fetch`,
 
 La cobertura incluye dominio previo, aislamiento de repositorios, cupos/precios, transiciones e historial, permisos de chat/ventas, asistencia y reputación, catálogo, favoritos, integridad de borrados, DTOs y dos solicitudes concurrentes por la última entrada. `createApp`, `createRepositories` y `createServices` permiten instancias aisladas y reloj inyectado.
 
-Verificación de C6: 55 pruebas backend y 100 frontend correctas (155 en total). Se conserva la cobertura anterior y se agregan intercambio C5/C6 con historial compartido tras recarga, organizador sin rol comprador, respuestas en todos los estados/evento pasado, rol/propiedad/evento, autores válidos, respuesta perdida y claves independientes por autor/compra. Compilación Android/iOS verificada; sin prueba propia en celular.
+Verificación de C8: 69 pruebas backend y 131 frontend correctas (200 en total), conservando la cobertura anterior. Cancelación pendiente/confirmada, reembolso total histórico/cero y fecha/autor, corte exacto de inicio, utilizada, propiedad/rol/cuerpo, desborde de cupo sin cambios parciales, recuperación tras pérdida de respuesta/recarga, concurrencia y reventa sin duplicar cupo/historial ni importe; chat posterior y ventas actualizadas. C8 agrega pruebas de seguimiento del organizador y carrera utilización/cancelación, con una sola operación completada e historial/cupo consistentes. Exportaciones Android/iOS con Metro; sin prueba propia en celular.

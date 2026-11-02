@@ -161,8 +161,9 @@ export function createEventosService(repositories, { now }) {
     listReviews: (id) => resenias.findByEvento(get(id)),
     previousReviews(id) {
       const evento = get(id);
+      const ahora = now();
       return resenias.findByOrganizador(evento.organizador).filter((resenia) => resenia.evento !== evento
-        && resenia.evento.fecha < evento.fecha && resenia.evento.haFinalizado(now()));
+        && resenia.evento.fecha < evento.fecha && resenia.evento.haFinalizado(ahora));
     },
   };
 }

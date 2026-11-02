@@ -96,6 +96,15 @@ export function createComprasService(repositories, { now }) {
       compra.actualizarEstado(data.estado, actor(repositories, actorId), ahora);
       return compras.save(compra);
     },
+    cancel(id, data, actorId) {
+      fields(data, []);
+      const usuario = actor(repositories, actorId);
+      const compra = get(id, actorId);
+      authorize(usuario.tieneRol(RolUsuario.COMPRADOR) && usuario === compra.comprador,
+        'Solo el comprador propietario puede cancelar su compra');
+      compra.cancelar(usuario, now());
+      return compras.save(compra);
+    },
     listMessages(id, actorId) {
       const compra = get(id, actorId);
       return compra.obtenerMensajes(actor(repositories, actorId));

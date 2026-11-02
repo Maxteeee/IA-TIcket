@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createApiClient } from '../src/services/api.client.js';
-import { createCatalogService, eventFromDto } from '../src/services/catalog.service.js';
+import { createCatalogService, eventFromDto, previousReviewFromDto } from '../src/services/catalog.service.js';
 import { money, rating } from '../src/utils/mockPresentation.js';
 
 const event = () => ({
@@ -150,4 +150,47 @@ test('C11: los precios muestran centavos para distinguir importes próximos al o
   assert.equal(money(10.5), '$10,5');
   assert.equal(money(5000), '$5.000');
   assert.equal(money(0), '$0');
+});
+
+const previousReview = () => ({ id: 'review-api', compradorId: 'autor-api', eventoId: 'pasado-api', compraId: 'compra-api',
+  puntuacion: 0, detalle: 'Una experiencia real', comprador: { id: 'autor-api', nombre: 'Ana', apellido: 'Pérez' },
+  evento: { id: 'pasado-api', nombre: 'Edición anterior', organizadorId: 'organizador-api',
+    fecha: '2026-10-20T20:00:00Z', fechaFin: '2026-10-20T22:00:00Z' } });
+
+test('C10: consulta pública codifica ID y conserva autor, evento, comentario, cero y fracciones', async () => {
+  const calls = [];
+  const service = createCatalogService({ get: async (path, options) => { calls.push({ path, options }); return [previousReview()]; } });
+  const controller = new AbortController();
+  const [result] = await service.getPreviousReviews('evento/con espacio', { signal: controller.signal });
+  assert.equal(calls[0].path, '/eventos/evento%2Fcon%20espacio/experiencias-anteriores');
+  assert.deepEqual(calls[0].options, { signal: controller.signal });
+  assert.equal(result.autor, 'Ana Pérez');
+  assert.equal(result.evento.nombre, 'Edición anterior');
+  assert.equal(result.puntuacion, 0);
+  assert.equal(result.detalle, 'Una experiencia real');
+  assert.equal(previousReviewFromDto({ ...previousReview(), puntuacion: 4.5 }).puntuacion, 4.5);
+  const dto = previousReview();
+  previousReviewFromDto(dto).evento.nombre = 'Cambio local';
+  assert.equal(dto.evento.nombre, 'Edición anterior');
+});
+
+test('C10: vacío no inventa reseñas y rechaza respuestas sin identidad, contenido o fechas válidas', async () => {
+  assert.deepEqual(await createCatalogService({ get: async () => [] }).getPreviousReviews('evento'), []);
+  for (const bad of [null, {}, [null], [{ id: 'x' }]]) {
+    await assert.rejects(createCatalogService({ get: async () => bad }).getPreviousReviews('evento'), { code: 'INVALID_RESPONSE' });
+  }
+  for (const change of [{ puntuacion: 6 }, { puntuacion: -1 }, { puntuacion: '5' }, { detalle: ' ' },
+    { compradorId: 'otro' }, { eventoId: 'otro' }, { comprador: null },
+    { evento: { ...previousReview().evento, fecha: 'inválida' } },
+    { evento: { ...previousReview().evento, fechaFin: null } }]) {
+    assert.throws(() => previousReviewFromDto({ ...previousReview(), ...change }), { code: 'INVALID_RESPONSE' });
+  }
+});
+
+test('C10: falla de reseñas conserva el error para reintentar sin datos de respaldo', async () => {
+  let attempts = 0;
+  const cause = new Error('Sin conexión');
+  const service = createCatalogService({ get: async () => { if (++attempts === 1) throw cause; return [previousReview()]; } });
+  await assert.rejects(service.getPreviousReviews('evento'), cause);
+  assert.equal((await service.getPreviousReviews('evento')).length, 1);
 });

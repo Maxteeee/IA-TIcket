@@ -1,6 +1,6 @@
 # Maqueta con sesiones de prueba
 
-La app usa dos perfiles locales, sin login. C3/C11 conectan Explorar, C4 publicación/eventos propios, C12 la compra, C1 mis compras, C2 las compras/disponibilidad de cada evento y C5/C6 el chat entre comprador y organizador con el backend. Los demás recorridos mantienen sus datos de maqueta. Empieza como **Comprador 1**. La barra superior muestra la sesión activa y un botón **Cambiar a Organizador 1 / Comprador 1**, disponible tanto en las pestañas como en los detalles.
+La app usa dos perfiles locales, sin login. C3/C11 conectan Explorar, C4 publicación/eventos propios, C12 la compra, C1 mis compras, C2 ventas/disponibilidad, C5/C6 el chat C9/C10 las reseñas del comprador y experiencias anteriores, C7 la cancelación con reembolso simulado y C8 sus condiciones y seguimiento del organizador en el backend. Los demás recorridos mantienen sus datos de maqueta. Empieza como **Comprador 1**. La barra superior muestra la sesión activa y un botón **Cambiar a Organizador 1 / Comprador 1**, disponible tanto en las pestañas como en los detalles.
 
 | Perfil | Roles | Recorrido |
 | --- | --- | --- |
@@ -38,7 +38,7 @@ Con Expo abierto, como **Comprador 1 → Explorar**:
 
 Se esperan 300 ms al escribir para no consultar por cada tecla. Al cambiar filtros, volver o alternar perfil se cancela la solicitud pendiente y sus respuestas atrasadas no pueden sobrescribir la consulta actual. Los filtros se conservan por perfil; las categorías se cargan al entrar y al actualizar/reintentar.
 
-C11 conecta el ordenamiento del catálogo con la API, según se describe a continuación. C4 publica eventos reales desde Organizar, C12 permite comprarlos, C1 los consulta desde Compras, C2 muestra sus compras y cupos al organizador y C5/C6 conectan la conversación de cada compra para ambos participantes. Favoritos y reseñas conservan la maqueta, con sus datos separados. El catálogo conectado todavía no muestra acciones de favorito ni publicación de reseñas. El detalle muestra **Lugar a confirmar** porque el dominio actual aún no modela ubicación.
+C11 conecta el ordenamiento del catálogo con la API, según se describe a continuación. C4 publica, C12 compra, C1 consulta compras, C2 muestra ventas/cupos y C5/C6 conectan su chat. C9 permite reseñar desde una compra utilizada cuyo evento finalizó y C10 muestra experiencias anteriores del organizador en el detalle conectado. Favoritos conserva la maqueta separada; la publicación de reseñas se hace desde la compra. El detalle muestra **Lugar a confirmar** porque el dominio actual aún no modela ubicación.
 
 ## C11: ordenar los resultados
 
@@ -50,7 +50,7 @@ En **Comprador 1 → Explorar**, los controles **Fecha ↑**, **Precio ↑** y *
 
 El orden elegido queda resaltado y se conserva al abrir un detalle, volver o cambiar de perfil. Limpiar texto/categoría no cambia ese orden. Cambiar de criterio cancela la consulta anterior; la pantalla respeta el orden recibido del servidor, sin reordenar la lista por su cuenta. Los empates se resuelven por fecha ascendente y luego ID.
 
-Las tarjetas muestran el promedio y la cantidad de reseñas del organizador, o **Sin reseñas**. El backend entrega ambos valores; el frontend no descarga ni inventa reseñas para calcularlos. Los formularios de reseña y experiencias anteriores siguen pendientes de su integración específica.
+Las tarjetas y el detalle muestran el promedio y la cantidad de reseñas del organizador, o **Sin reseñas**. El backend entrega ambos valores; el frontend no descarga ni inventa reseñas para calcularlos. C9 publica reseñas reales que actualizan esos valores. C10 presenta las experiencias anteriores en el detalle sin recalcular ese promedio general a partir de la lista visible.
 
 Con una instancia nueva de `npm run backend:demo` se puede verificar:
 
@@ -96,7 +96,7 @@ Con el backend activo y la dirección de API configurada:
 
 El frontend envía únicamente evento, tipo, cantidad y precio esperado, con identidad del perfil y una clave de reintento. El backend exige rol COMPRADOR almacenado, valida fecha/tipo/cantidad/cupo y calcula el total en centavos. Dos compradores no pueden quedarse con la última entrada. El comprobante conserva el precio y nombre del tipo al comprar aunque después se editen.
 
-La compra vive en el backend y sobrevive a recargar la app mientras ese proceso siga activo; C1 recupera todas las compras de la identidad activa. Las claves pendientes del cliente viven en memoria y se pierden al recargar completamente la app; no hay recuperación automática de un intento incierto después de esa recarga, pero el listado permite comprobar si se registró. C5 conecta el chat del comprador. No se conectaron pagos, cancelación ni reseñas de estas compras; las reservas pendientes no caducan por ahora.
+La compra vive en el backend y sobrevive a recargar la app mientras ese proceso siga activo; C1 recupera todas las compras de la identidad activa. Las claves pendientes del cliente viven en memoria y se pierden al recargar completamente la app; no hay recuperación automática de un intento incierto después de esa recarga, pero el listado permite comprobar si se registró. C5 conecta el chat del comprador y C9 sus reseñas elegibles. C7 conecta cancelación y reembolso simulado desde el comprobante; las reservas pendientes no caducan automáticamente. No hay cobros ni movimientos reales de dinero.
 
 ## C1: consultar mis compras, estados y días restantes
 
@@ -138,7 +138,7 @@ Solo el propietario con rol ORGANIZADOR puede consultar esta información. El ba
 
 El cupo mostrado ya es la cantidad restante del backend: no se descuentan las compras una segunda vez. Las pendientes reservan según la regla existente y confirmar/utilizar no vuelven a descontar. La operación manual de confirmación de la sección C1 permite revisar otro estado sin agregar pagos ni botones de modificación en esta pantalla. Si se edita un tipo por API, la disponibilidad muestra sus datos actuales y cada compra conserva su nombre/precio originales.
 
-El panel de C2 no agrega edición, pagos, cancelación ni devolución de cupo. C6 agrega **Abrir conversación** en cada compra, reutilizando el chat de C5. El recorrido previo continúa en **Organizar → Recorrer ventas de ejemplo**, separado de API. Las pruebas de canceladas/reembolsadas usan históricos aislados; no implementan esas transiciones.
+El panel de C2 no agrega edición, pagos, cancelación ni devolución de cupo. C6 agrega **Abrir conversación** en cada compra, reutilizando el chat de C5. El recorrido previo continúa en **Organizar → Recorrer ventas de ejemplo**, separado de API. Además de históricos aislados, C7 ahora genera cancelaciones/reembolsos simulados reales del backend, visibles al consultar este panel otra vez.
 
 ## C5: enviar mensajes desde una compra
 
@@ -152,7 +152,7 @@ El panel de C2 no agrega edición, pagos, cancelación ni devolución de cupo. C
 
 Se comprueban rol de comprador y propiedad al consultar y enviar; comprar el mismo evento no permite leer la conversación de otra compra. El backend autoriza exclusivamente sus participantes con el rol correspondiente y deriva autor/fecha de la identidad y reloj del servidor, rechazando esos campos en el cuerpo. El perfil Organizador 1 usa esta entrada para sus compras personales como comprador; para responder a ventas abre la conversación desde Organizar, según C6.
 
-Los estados cancelada/reembolsada de las pruebas son datos históricos aislados, sin implementar esas transiciones. Para revisar una conversación después del evento basta mantener la compra y abrirla desde Mis compras cuando pase la fecha. El backend no se reinicia para probarlo: reiniciar borra compras y mensajes.
+C7 genera cancelaciones/reembolsos simulados y conserva la conversación; las pruebas anteriores también usan históricos aislados. Para revisar una conversación después del evento basta mantener la compra y abrirla desde Mis compras cuando pase la fecha. El backend no se reinicia para probarlo: reiniciar borra compras y mensajes.
 
 La clave de un envío incierto del cliente es volátil: una recarga completa la pierde. Consultar el historial antes de volver a enviar en ese caso. No hay edición/borrado de mensajes, persistencia externa ni indicación de lectura. El chat anterior sigue separado en **Recorrer compras de ejemplo** y no se usa como respaldo si falla la API.
 
@@ -169,7 +169,75 @@ Se exige ORGANIZADOR y que la compra pertenezca al evento seleccionado y al orga
 
 Las compras personales de Organizador 1 siguen en **Compras** con la perspectiva comprador; sus ventas y conversaciones se abren desde **Organizar**. Se reutilizan la pantalla y servicio de C5 y los mensajes embebidos en Compra; no se crea un segundo chat. Puede iniciar una conversación vacía sobre una compra existente, sin exigir que el comprador haya escrito primero.
 
-C6 no agrega notificaciones, lectura, edición/borrado ni WebSocket/polling. Para probar estados cancelada/reembolsada las pruebas usan históricos aislados; sus transiciones siguen pendientes. La clave de envío incierto se pierde con una recarga completa: consultar historial antes de reenviar en ese caso. Los chats de ejemplos siguen separados de los reales.
+C6 no agrega notificaciones, lectura, edición/borrado ni WebSocket/polling. C7 permite generar canceladas/reembolsadas simuladas sin bloquear esta conversación; las pruebas anteriores también usan históricos aislados. La clave de envío incierto se pierde con una recarga completa: consultar historial antes de reenviar en ese caso. Los chats de ejemplos siguen separados de los reales.
+
+## C9: puntuar y comentar un evento desde la compra
+
+1. Como **Comprador 1 → Compras**, abrir una compra real. Cuando esté UTILIZADA aparece **Tu experiencia cuenta**. **Reseña de mi compra** se habilita únicamente cuando también finalizó el evento, según el backend.
+2. Abrir la reseña e ingresar una puntuación numérica de **0 a 5**, con coma o punto para decimales, y un comentario obligatorio de hasta **1500 caracteres**. Cero es una puntuación válida, distinta de dejar el campo vacío.
+3. Tocar **Publicar reseña**. Los campos se bloquean durante el envío; se confirma que fue publicada y se muestran el puntaje/comentario guardados para esa compra. No se presenta una reseña como guardada antes de recibir la respuesta válida del servidor.
+4. Volver al comprobante, abrir la reseña otra vez o recargar la app: sus reseñas se consultan por ID de compra y se recuperan mientras permanezca activo el mismo backend. No se mezclan con compras de otros usuarios ni con reseñas de la maqueta.
+5. Consultar un próximo evento del mismo organizador en Explorar: C11 muestra el promedio y conteo que incluyen la reseña publicada. C10 muestra también el texto, autor, puntaje y evento de origen en **Experiencias anteriores**.
+6. Error de validación conserva el formulario. Si se pierde la respuesta, **Reintentar publicación** conserva puntuación, comentario y clave para recuperar la misma reseña sin duplicar ni alterar dos veces la reputación. Salir/perfil cancela solicitudes y evita respuestas tardías. Actualizar o volver a la app vuelve a consultar la habilitación del servidor.
+
+Se conserva la regla acordada de compra propia UTILIZADA **y** evento finalizado. La elegibilidad viene en `puedeReseniar`, calculada por el servidor; no se usa la hora del teléfono ni se confía en el estado enviado por el cliente. El backend vuelve a comprobar identidad/rol/propiedad y elegibilidad al guardar. Si faltó fechaFin, no se considera finalizado aunque haya pasado el inicio. Organizador 1 puede reseñar una compra personal, pero no las compras de los compradores de sus eventos.
+
+**Preparar una prueba real:** el circuito de utilización y la fechaFin ya existen en el backend; C9 no agrega botones para marcar uso o finalizar eventos. Publicar un evento futuro, comprar antes de que comience y usar las operaciones siguientes con el ID de la compra y del evento publicado por Organizador 1:
+
+```bash
+curl -X PATCH http://localhost:3000/api/compras/ID_COMPRA/estado \
+  -H 'Content-Type: application/json' -H 'X-Usuario-Id: organizador-1' \
+  -d '{"estado":"CONFIRMADA"}'
+curl -X PATCH http://localhost:3000/api/compras/ID_COMPRA/estado \
+  -H 'Content-Type: application/json' -H 'X-Usuario-Id: organizador-1' \
+  -d '{"estado":"UTILIZADA"}'
+curl -X PATCH http://localhost:3000/api/eventos/ID_EVENTO \
+  -H 'Content-Type: application/json' -H 'X-Usuario-Id: organizador-1' \
+  -d '{"fechaFin":"FECHA_ISO_CON_ZONA_POSTERIOR_AL_INICIO"}'
+```
+
+Confirmar debe hacerse antes del inicio. Usar una fechaFin válida posterior al inicio y actualizar el comprobante cuando el reloj del servidor la haya alcanzado; antes de ese instante la reseña permanece deshabilitada. El modo demo anterior no agrega compras a los dos perfiles locales. Las pruebas automatizadas usan un reloj inyectado y no necesitan esperar ni reiniciar el servidor del usuario.
+
+**Cantidad de reseñas pendiente de definición:** se mantiene la posibilidad previa del backend de publicar varias por compra; no se agregó una restricción de unicidad sin confirmación. Cada publicación confirmada es una reseña independiente; los reintentos con la misma clave recuperan la misma. La pantalla muestra las reseñas de esa compra. Las claves inciertas del cliente sobreviven navegación/perfil, pero se pierden al recargar completamente: consultar lo guardado antes de volver a publicar en ese caso.
+
+C9 no agrega edición/borrado desde la app, cambios de estado ni cancelación/reembolso. C10 incorpora la lectura pública descrita a continuación. `Recorrer compras de ejemplo` conserva su formulario de reseña de maqueta, separado del real.
+
+## C7: cancelar una compra y recuperar el importe simulado
+
+1. Como **Comprador 1**, comprar un evento futuro y abrir **Compras → compra → Cancelar compra**. Se muestra el efecto antes de confirmar y se puede elegir **Conservar compra**.
+2. Para una **pendiente**, confirmar la cancelación: queda **Cancelada** y devuelve sus entradas al cupo. El comprobante muestra el total/importe pendiente como simulado; no hay reembolso porque no había pago confirmado.
+3. Para una **confirmada**, preparar otra compra y confirmar mediante el PATCH manual del apartado C1, siempre antes del inicio. Actualizar el comprobante y cancelar: se anticipa el total original a reembolsar; al recibir la respuesta queda **Reembolsada**, con importe, fecha y aviso explícito de simulación. El historial guarda CANCELADA y luego REEMBOLSADA. Si el precio del tipo cambió, devuelve el total original de esa compra. Una compra gratuita conserva reembolso cero.
+4. Volver a **Mis compras**: aparece el estado actualizado. Como **Organizador 1**, consultar el evento en Organizar para ver el estado de la venta y el cupo recuperado del tipo elegido. El chat continúa disponible.
+5. Compra utilizada o evento iniciado: no ofrece cancelación y explica la restricción. Si el inicio ocurre después de cargar la pantalla, el servidor rechaza al confirmar y se vuelve a consultar el comprobante. No depende de la hora del teléfono ni de fechaFin.
+6. Si falla la conexión, muestra **Reintentar cancelación** y **Actualizar compra** para recuperar el resultado. Reabrir el comprobante o recargar la app también consulta el estado guardado mientras viva el backend. Reintentar nunca devuelve cupo ni importe por segunda vez, incluso si el evento comenzó o esas entradas ya fueron vendidas de nuevo.
+
+Reglas confirmadas: solo comprador propietario con rol COMPRADOR; PENDIENTE/CONFIRMADA y estrictamente antes del inicio. Devolución completa de cupo una vez; pendientes sin reembolso, confirmadas con devolución simulada del total original. Las restricciones expresadas en C8 se aplican en esta misma operación necesaria para C7; no hay una acción adicional del organizador para aprobar o ejecutar la cancelación. **Todos los importes a pagar y reembolsar son simulados; no hay dinero real.** La confirmación/utilización siguen siendo manuales por API, sin agregar pagos ni sus botones.
+
+`purchasesService.cancel` hace POST `/compras/:id/cancelacion` con `{}` e identidad de prueba, coalesce doble pulsación por comprador/compra y valida estado/autor/ID/reembolso del servidor. El DTO incluye `puedeCancelar` y `reembolso: null | {importe,fecha,simulado:true}`; las otras pantallas los preservan. Los históricos con solo estado REEMBOLSADA sin registro no inventan un importe devuelto. Comprobante bloquea envío/refresco simultáneos, cancela solicitudes al salir/perfil y descarta respuestas tardías. Backend realiza la operación completa de forma síncrona e idempotente; no necesita conservar una clave de cancelación en el teléfono ni crea entidad/repositorio de pagos.
+
+## C8: condiciones de cancelación y seguimiento del organizador
+
+**Organizador 1 → Organizar → Tus eventos publicados → evento** muestra la política en **Cancelaciones de compradores**: cada comprador puede cancelar una compra propia pendiente/confirmada antes del inicio, siempre que no se haya utilizado. Es una regla fija confirmada, aplicada por el backend en la operación de C7; no requiere aprobación del organizador ni agrega un interruptor para desactivarla.
+
+Para probar el seguimiento:
+
+1. Crear un evento con General y VIP, y comprar como Comprador 1. En Organizar se ven la compra y el cupo reservado.
+2. Cancelar desde el comprobante del comprador según C7. Reabrir el panel del evento o arrastrar para actualizar: se ve **Cancelada**, o **Reembolsada** si estaba confirmada, y el cupo recuperado del mismo tipo. Los otros tipos no cambian. Los filtros conservan todos esos estados.
+3. Cada venta muestra **Total simulado** y, si tiene registro, **Reembolso simulado** con el importe original. Los registros históricos sin datos de reembolso no inventan un monto. El chat permanece disponible.
+4. Utilizar otra compra con el circuito manual existente: la cancelación del comprador se bloquea, conserva estado/cupo y no genera un reembolso. Desde el instante de inicio también se bloquea, aunque no tenga fechaFin o el comprador haya abierto el comprobante antes del límite.
+
+La validación usa el reloj del servidor. Ante utilización/cancelación simultáneas solo una puede completarse: si se utiliza primero no hay devolución; si se cancela primero no puede utilizarse luego. El panel consulta el resultado actual del backend; no resta ni devuelve cupo por su cuenta, y se actualiza al entrar, arrastrar o volver a la app. El organizador consulta sus ventas, mientras el comprador ejecuta la cancelación de su propia compra.
+
+## C10: leer experiencias anteriores antes de comprar
+
+1. Como **Comprador 1**, abrir **Explorar → evento → Experiencias anteriores**. Cada tarjeta muestra autor, puntuación, comentario y nombre/fecha del evento reseñado. El detalle también muestra el promedio y cantidad de reseñas del organizador.
+2. Con un backend demo ya iniciado: **Concierto del río** y **Primavera en el parque** comparten las dos reseñas de **Noche de vinilos**; **El umbral** muestra la reseña de **La primera función**, incluida la puntuación cero. **Ideas que conectan** y **La ciudad juega** muestran el estado sin experiencias. No reiniciar una instancia con datos para cargar ejemplos.
+3. Para probar datos nuevos, publicar una reseña por C9 y abrir una siguiente edición del mismo organizador: aparecerá al consultar. **Actualizar reseñas**, reabrir el detalle o volver de segundo plano consulta la API nuevamente.
+4. Si falla la consulta, aparece un error con **Reintentar reseñas**. La carga/reintento de esta sección es independiente del detalle y la compra: conserva tipo/cantidad seleccionados. Salir del detalle o cambiar perfil cancela la consulta y descarta respuestas tardías.
+
+Se reutiliza `GET /eventos/:id/experiencias-anteriores`, público. Solo incluye eventos distintos, anteriores por fecha de inicio al evento consultado, del mismo organizador y con fechaFin alcanzada según el servidor; admite otras categorías. El propio evento, posteriores/simultáneos y eventos sin fin o aún en curso quedan excluidos. El vacío indica que no hay experiencias elegibles para esa publicación, aunque el promedio general del organizador pueda incluir otras reseñas. Se conservan todas las reseñas elegibles, incluso cero/fracciones, sin imponer una nueva regla de unicidad.
+
+`catalog.service` adapta los DTOs con los resúmenes de autor/evento; `PreviousEventReviews` maneja consulta, tarjetas y estados dentro del scroll de `EventDetailScreen`. No hay consultas por tarjeta ni fallback a fixtures. La maqueta anterior sigue separada. No se agregan dependencias, persistencia, autenticación, ordenamiento/paginación de reseñas ni cambios en la selección de compra.
 
 ## Cómo probar en el celular
 
@@ -187,7 +255,7 @@ npx expo start --go --tunnel
 6. Crear eventos desde Organizar usa C4 y publica en la API. Para recorrer la edición básica de la maqueta, entrar a Recorrer ventas de ejemplo y elegir un evento de ejemplo propio. El comprador no tiene acceso a publicación ni a la pestaña Organizar.
 7. Para reseñar como comprador, usar la compra utilizada **AT-1982 / Noche de vinilos**. Las reseñas requieren compra propia utilizada y evento finalizado; no aparecen como acción de una venta del organizador.
 
-Los eventos publicados con C4, las compras de C12 y los mensajes de C5/C6 viven en el backend y sobreviven a la recarga de la app mientras el mismo servidor esté activo. Los cambios de la maqueta (favoritos, compras, mensajes y edición de eventos de ejemplo) permanecen solo durante la sesión de la app y se reinician al recargar. La edición de fecha/tipos de entrada y cancelación/reembolso siguen pendientes. C12 reserva cupos reales de la API sin cobrar; la compra simulada de los ejemplos conserva su comportamiento local.
+Los eventos publicados con C4, las compras de C12 y los mensajes de C5/C6 viven en el backend y sobreviven a la recarga de la app mientras el mismo servidor esté activo. Los cambios de la maqueta (favoritos, compras, mensajes y edición de eventos de ejemplo) permanecen solo durante la sesión de la app y se reinician al recargar. La edición de fecha/tipos de entrada desde la app sigue pendiente. C7 conecta cancelación/reembolso simulado, sin dinero real. C12 reserva cupos reales de la API sin cobrar; la compra simulada de los ejemplos conserva su comportamiento local.
 
 ## Organización
 
@@ -202,7 +270,10 @@ Los eventos publicados con C4, las compras de C12 y los mensajes de C5/C6 viven 
 - `src/screens/EventSalesScreen.js`: panel C2 desde publicaciones propias, disponibilidad completa, compras por estado y actualización/reintento.
 - `src/services/chat.service.js`: perspectivas comprador/organizador, propiedad/relación con evento, mensajes, validación de texto/DTOs e intentos de envío por autor/compra.
 - `src/screens/ConnectedChatScreen.js`: chat compartido desde comprobante o venta, etiquetas por perspectiva, historial, compositor, envío confirmado, errores y reintentos sin duplicados.
-- `src/services/purchases.service.js`: creación y consulta privada de compras, adaptación de comprobantes, intentos por comprador/evento y reintentos sin duplicados.
+- `src/services/reviews.service.js`: carga por compra, validación de puntuación/comentario/DTOs y publicación con reintento sin duplicados.
+- `src/screens/PurchaseReviewScreen.js`: formulario y reseñas reales de la compra, habilitación del servidor, confirmación y errores.
+- `src/components/PreviousEventReviews.js`: experiencias públicas C10 en el detalle, autor/evento, carga/error/vacío y actualización independiente de la compra.
+- `src/services/purchases.service.js`: creación/consulta privada y cancelación C7, adaptación de comprobantes/reembolsos, intentos por comprador/evento y reintentos sin duplicados.
 - `src/screens/ConnectedPurchasesScreen.js`: listado propio de API, filtros por estado, carga/error/vacíos y actualización al entrar/refrescar/volver a la app.
 - `src/components/PurchaseCountdown.js` y `src/utils/purchasePresentation.js`: días del servidor para confirmadas, compartidos por tarjeta y comprobante.
 - `src/utils/purchaseIntent.js`: selección de tipo/cantidad y cálculo del total mostrado en centavos.
@@ -231,4 +302,4 @@ Las pruebas usan el runner de Node, sin dependencias nuevas. Además de sesiones
 
 La exportación de Metro para Android/iOS verifica compilación y resolución de módulos; no sustituye la revisión de interacción en un dispositivo.
 
-Verificado para C6: 100 pruebas de frontend y 55 de backend correctas (155 en total). Además de los CUs anteriores, cubren intercambio comprador/organizador con historial compartido tras recarga, organizador sin rol comprador, todos los estados y eventos pasados, rol almacenado/propiedad/evento/autor, respuesta perdida y claves por autor/compra. Exportaciones Metro de Android/iOS sin bytecode en `/tmp/ai-ticket-c6-android` y `/tmp/ai-ticket-c6-ios`; no son instalaciones en el celular. La interacción en dispositivo queda pendiente.
+Verificado para C8: 131 pruebas de frontend y 69 de backend correctas (200 en total). Se conserva la cobertura anterior y se agregan cancelación pendiente/confirmada, importe histórico simulado/cero y fecha/autor, cupo, corte exacto, utilizadas, permisos/cuerpo, respuesta perdida/recarga/concurrencia sin duplicados, reventa de cupo, historial y chat posterior. C8 agrega seguimiento del organizador por tipo y prueba de utilización/cancelación concurrentes con solo una transición válida. Exportaciones Metro de Android/iOS sin bytecode en `/tmp/ai-ticket-c8-android` y `/tmp/ai-ticket-c8-ios`; no son instalaciones en el celular. La interacción en dispositivo queda pendiente.

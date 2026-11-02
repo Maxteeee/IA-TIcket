@@ -15,16 +15,24 @@ export function purchaseFromDto(dto) {
     || (dto.estado === 'CONFIRMADA' ? !Number.isSafeInteger(dto.diasRestantes) || dto.diasRestantes < 0 : dto.diasRestantes !== null)
     || dto.evento?.id !== dto.eventoId || typeof dto.evento?.nombre !== 'string' || !dto.evento.nombre.trim()
     || typeof dto.evento?.fecha !== 'string' || !Number.isFinite(new Date(dto.evento.fecha).getTime())
-    || typeof dto.evento?.organizadorId !== 'string' || !dto.evento.organizadorId) throw invalid();
+    || typeof dto.evento?.organizadorId !== 'string' || !dto.evento.organizadorId
+    || typeof dto.puedeReseniar !== 'boolean' || (dto.puedeReseniar && dto.estado !== 'UTILIZADA')
+    || typeof dto.puedeCancelar !== 'boolean' || (dto.puedeCancelar && !['PENDIENTE', 'CONFIRMADA'].includes(dto.estado))) throw invalid();
+  if (dto.reembolso !== null && (dto.estado !== 'REEMBOLSADA' || !dto.reembolso || dto.reembolso.simulado !== true
+    || !Number.isFinite(dto.reembolso.importe) || dto.reembolso.importe < 0 || dto.reembolso.importe !== dto.total
+    || typeof dto.reembolso.fecha !== 'string' || !Number.isFinite(new Date(dto.reembolso.fecha).getTime()))) throw invalid();
   return { id: dto.id, compradorId: dto.compradorId, eventoId: dto.eventoId, tipoEntradaId: dto.tipoEntradaId,
     tipoEntradaNombre: dto.tipoEntradaNombre, precioUnitario: dto.precioUnitario,
-    cantidad: dto.cantidad, total: dto.total, estado: dto.estado, diasRestantes: dto.diasRestantes,
+    cantidad: dto.cantidad, total: dto.total, estado: dto.estado, diasRestantes: dto.diasRestantes, puedeReseniar: dto.puedeReseniar,
+    puedeCancelar: dto.puedeCancelar,
+    reembolso: dto.reembolso ? { importe: dto.reembolso.importe, fecha: dto.reembolso.fecha, simulado: true } : null,
     evento: { id: dto.evento.id, nombre: dto.evento.nombre, fecha: dto.evento.fecha, organizadorId: dto.evento.organizadorId } };
 }
 
 export function createPurchasesService(client = apiClient) {
   // Se conserva el intento incierto al volver al evento o cambiar de perfil en la misma sesión.
   const attempts = new Map();
+  const cancellations = new Map();
   const buyer = (session) => {
     if (!hasRole(session, RolUsuario.COMPRADOR)) throw new ApiError('Necesitás un perfil comprador para acceder a tus compras.', { status: 403 });
     return session.usuario.id;
@@ -75,6 +83,22 @@ export function createPurchasesService(client = apiClient) {
       const purchase = purchaseFromDto(await client.get(`/compras/${encodeURIComponent(id)}`, { ...options, usuarioId }));
       if (purchase.compradorId !== usuarioId) throw new ApiError('Solo podés consultar el comprobante de una compra propia.', { status: 403 });
       return purchase;
+    },
+    cancel(id, session, { signal } = {}) {
+      const usuarioId = buyer(session);
+      const key = `${usuarioId}:${id}`;
+      if (cancellations.has(key)) return cancellations.get(key);
+      // La cancelación completa es idempotente por compra, incluso tras perder la respuesta.
+      const pending = Promise.resolve().then(() => client.post(`/compras/${encodeURIComponent(id)}/cancelacion`, {}, { usuarioId, signal }))
+        .then((dto) => {
+          const purchase = purchaseFromDto(dto);
+          if (purchase.id !== id || purchase.compradorId !== usuarioId
+            || !['CANCELADA', 'REEMBOLSADA'].includes(purchase.estado)
+            || (purchase.estado === 'REEMBOLSADA' && !purchase.reembolso)) throw invalid();
+          return purchase;
+        }).finally(() => { cancellations.delete(key); });
+      cancellations.set(key, pending);
+      return pending;
     },
   };
 }

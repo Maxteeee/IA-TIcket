@@ -34,6 +34,9 @@ export function compraDto(compra, ahora = new Date()) {
     total: compra.total,
     estado: compra.estado,
     diasRestantes: compra.diasRestantes(ahora),
+    puedeReseniar: compra.puedeReseniar(compra.comprador, ahora),
+    puedeCancelar: compra.puedeCancelar(compra.comprador, ahora),
+    reembolso: compra.reembolso ? { importe: compra.reembolso.importe, fecha: compra.reembolso.fecha.toISOString(), simulado: true } : null,
   };
 }
 
@@ -49,3 +52,10 @@ export function ventasEventoDto({ evento, compras }, ahora = new Date()) {
 export const mensajeDto = ({ id, usuario, mensaje, enviado }, compraId) => ({ id, compraId, usuarioId: usuario.id, mensaje, enviado: enviado.toISOString() });
 export const cambioEstadoDto = ({ id, compra, estado, quien, fechaHora }) => ({ id, compraId: compra.id, estado, quienId: quien.id, fechaHora: fechaHora.toISOString() });
 export const reseniaDto = ({ id, comprador, evento, compra, detalle, puntuacion }) => ({ id, compradorId: comprador.id, eventoId: evento.id, compraId: compra?.id ?? null, detalle, puntuacion });
+
+export const experienciaAnteriorDto = (resenia) => ({
+  ...reseniaDto(resenia),
+  comprador: { id: resenia.comprador.id, nombre: resenia.comprador.nombre, apellido: resenia.comprador.apellido },
+  evento: { id: resenia.evento.id, nombre: resenia.evento.nombre, organizadorId: resenia.evento.organizador.id,
+    fecha: resenia.evento.fecha.toISOString(), fechaFin: resenia.evento.fechaFin.toISOString() },
+});

@@ -8,6 +8,7 @@ import { useMockSession } from '../session/MockSessionProvider';
 import { canManageEvent, hasRole } from '../session/permissions';
 import { RolUsuario } from '../session/roles';
 import { purchasesService } from '../services/purchases.service';
+import PreviousEventReviews from '../components/PreviousEventReviews';
 
 export default function CatalogEventScreen({ eventId, onBack, requireOwner = false, published = false, onViewPublic, onPurchased }) {
   const { session } = useMockSession();
@@ -55,7 +56,8 @@ export default function CatalogEventScreen({ eventId, onBack, requireOwner = fal
     return <View style={ui.screen}>
       {published ? <View style={{ padding: 16, backgroundColor: colors.successLight }} accessibilityRole="alert"><Text style={[ui.label, { color: colors.success }]}>✓ Tu evento fue publicado</Text></View> : null}
       <EventDetailScreen event={event} organizer={event.organizador} onBack={onBack}
-        purchaseEnabled={!requireOwner && Boolean(onPurchased)} showReviews={false} purchaseMode="api"
+        purchaseEnabled={!requireOwner && Boolean(onPurchased)} purchaseMode="api"
+        reviewsContent={<PreviousEventReviews key={event.id} eventId={event.id} organizerName={event.organizador.nombre} />}
         pendingPurchase={!requireOwner && hasRole(session, RolUsuario.COMPRADOR) ? purchasesService.getPending(session, eventId) : null}
         onPurchase={buy} onReloadAvailability={reloadAvailability} />
       {onViewPublic ? <View style={{ padding: 16 }}><Button title="Ver publicación en el catálogo" secondary onPress={onViewPublic} /></View> : null}
