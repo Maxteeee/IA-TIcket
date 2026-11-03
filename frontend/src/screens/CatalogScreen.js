@@ -8,7 +8,8 @@ import { selectEvents } from '../utils/mockPresentation';
 export default function CatalogScreen({ events, organizers, favoriteIds = [], onToggleFavorite, onOpenEvent, filters, onFilters, saved = false, onExplore, availableCategories, serverFiltered = false, showSort = true, showRatings = true, loading = false, error = '', onRetry, onRefresh }) {
   const { session } = useMockSession();
   const categories = availableCategories ?? mockCategories.map((nombre) => ({ id: nombre, nombre }));
-  const visible = serverFiltered ? events : selectEvents(events, organizers, { ...filters, favoriteIds: saved ? favoriteIds : null });
+  const visible = serverFiltered ? events.filter((event) => !saved || favoriteIds.includes(event.id))
+    : selectEvents(events, organizers, { ...filters, favoriteIds: saved ? favoriteIds : null });
   const musicCategory = categories.find((category) => category.nombre === 'Música');
   const activeFilters = Boolean(filters.search || filters.category !== 'Todos');
   const header = <View style={{ gap: 22, paddingBottom: 20 }}>

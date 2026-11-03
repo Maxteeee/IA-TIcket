@@ -1,6 +1,6 @@
 # Backend de entradas
 
-API Express en JavaScript, con almacenamiento en memoria. Desde la raíz: `npm install`, `npm run backend`. El arranque local prepara cinco categorías y los perfiles de prueba Comprador 1/Organizador 1, sin eventos. Los datos se pierden al reiniciar el proceso. El frontend ya consulta esta API para C3/C11, C4, C12, C1, C2, C5/C6 y C9/C10/C7/C8 (catálogo, publicación, compra, mis compras, ventas, chat, reseñas y cancelación/reembolso simulado); los demás recorridos conservan la maqueta local.
+API Express en JavaScript, con almacenamiento en memoria. Desde la raíz: `npm install`, `npm run backend`. El arranque local prepara cinco categorías y los perfiles de prueba Comprador 1/Organizador 1, sin eventos. Los datos se pierden al reiniciar el proceso. El frontend ya consulta esta API para C3/C11, C4, C12, C1, C2, C5/C6 y C9/C10/C7/C8 (catálogo, publicación, compra, mis compras, ventas, chat, reseñas y cancelación/reembolso simulado); los favoritos manuales se conservan localmente por perfil en el frontend.
 
 ## Acceso desde el celular con WSL
 
@@ -19,11 +19,11 @@ El comando de firewall se usa al crear la regla por primera vez; si ya existe, c
 
 En backend/.env, configurar `PUBLIC_API_URL=http://IP_WINDOWS:3000/api`; en frontend/.env, `EXPO_PUBLIC_API_URL=http://IP_WINDOWS:3000/api`, con dos barras después de `http:`. Iniciar el backend con `npm run backend` desde la raíz. Desde el teléfono en la misma red, abrir `http://IP_WINDOWS:3000/api/health` y luego `/api/categorias`: deben responder JSON. Recargar la app después de actualizar la dirección (reiniciar solo Expo si conserva la configuración anterior). El túnel de Expo transporta la app, no la API. Reiniciar el backend borra sus datos en memoria.
 
-## Catálogo de prueba para C3/C11
+## Arranque sin datos de negocio precargados
 
-`npm run backend:demo` desde la raíz inicia el servidor con categorías y eventos de prueba del propio backend. También puede activarse con `SEED_DEMO=true` en backend/.env. El arranque normal prepara solo referencias (categorías y perfiles); createApp no incorpora datos implícitos y las pruebas conservan instancias aisladas.
+**DD-08, confirmado por el usuario el 2026-11-02:** el servidor prepara solamente los dos perfiles locales y las cinco categorías base. Eventos, compras, mensajes, reseñas y favoritos comienzan vacíos; se crean mediante los recorridos de la app. No hay otros organizadores precargados, comandos demo ni carga por SEED_DEMO/--demo. No se eliminan datos del proceso en curso por una llamada de limpieza: el almacenamiento continúa siendo en memoria y se vacía al reiniciarlo.
 
-`src/data/demo.js` carga cinco categorías y siete eventos (cinco futuros y dos pasados), con fechas relativas y tipos de entrada. Usa IDs estables, conserva referencias canónicas y no sobrescribe registros existentes. Todos los datos siguen siendo temporales en memoria. Incluye tres organizadores: Equipo Encuentro con promedio 4,5 de dos reseñas; Compañía Umbral con una reseña de 0; Red Abierta sin reseñas. Las tres reseñas históricas se vinculan con compras utilizadas de los eventos pasados y permiten probar C11; no sustituyen la publicación real de C9. No usa fixtures del frontend ni incorpora autenticación o pagos. C4 permite crear eventos desde la app.
+Los escenarios completos para búsqueda/reputación/experiencias están en `test/fixtures/demo.js`, importados exclusivamente por las pruebas, con repositorios aislados. El frontend tiene sus propios escenarios de test separados de las colecciones vacías de la app. Esos fixtures no son datos del usuario ni se incorporan al arranque.
 
 El listado y el detalle de eventos agregan resúmenes `categoria: {id, nombre, descripcion}` y `organizador: {id, nombre, apellido, roles, puntaje, cantidadResenias}` a sus DTOs, conservando `categoriaId` y `organizadorId`. Así la pantalla muestra nombres reales sin consultar todos los usuarios ni inventar asociaciones por nombre. `puntaje` es el promedio de todas las reseñas recibidas por ese organizador, o null si no tiene; `cantidadResenias` es el conteo real. El servicio utiliza la misma regla para ordenar y para construir estos datos, sin almacenar un promedio que pueda quedar desactualizado.
 
@@ -77,7 +77,7 @@ Este encabezado es un mecanismo de identidad para desarrollo local, **no autenti
 
 ## Publicación C4 e identidad local
 
-`server.js` invoca `seedReferenceData` antes de iniciar Express. Prepara `comprador-1` (COMPRADOR), `organizador-1` (COMPRADOR + ORGANIZADOR) y las cinco categorías. La carga es idempotente y no sobrescribe registros; no agrega eventos. El modo demo agrega los ejemplos de C3/C11 y marca como organizadores a sus autores históricos.
+`server.js` invoca `seedReferenceData` antes de iniciar Express. Prepara `comprador-1` (COMPRADOR), `organizador-1` (COMPRADOR + ORGANIZADOR) y las cinco categorías. La carga es idempotente y no sobrescribe registros; no agrega eventos. No se agregan otros autores ni entidades de negocio. Los ejemplos completos se usan exclusivamente en pruebas.
 
 `Usuario.roles` se valida contra RolUsuario y se copia al construir/devolver DTOs. Los usuarios creados mediante la API reciben COMPRADOR por defecto; los cuerpos públicos de creación/edición no admiten roles. Los roles de prueba se asignan en datos de arranque, sin inventar un administrador ni un login.
 
@@ -260,3 +260,5 @@ La cobertura incluye dominio previo, aislamiento de repositorios, cupos/precios,
 Verificación de C8: 69 pruebas backend y 131 frontend correctas (200 en total), conservando la cobertura anterior. Cancelación pendiente/confirmada, reembolso total histórico/cero y fecha/autor, corte exacto de inicio, utilizada, propiedad/rol/cuerpo, desborde de cupo sin cambios parciales, recuperación tras pérdida de respuesta/recarga, concurrencia y reventa sin duplicar cupo/historial ni importe; chat posterior y ventas actualizadas. C8 agrega pruebas de seguimiento del organizador y carrera utilización/cancelación, con una sola operación completada e historial/cupo consistentes. Exportaciones Android/iOS con Metro; sin prueba propia en celular.
 
 Verificación de DD-07 y guía de arranque: 70 pruebas backend + 133 frontend (203) correctas. Incluye rechazo de autocompra en dominio/POST con y sin clave, cupo/registros sin cambios, clave no consumida y compras permitidas en eventos ajenos con el mismo organizador. Pruebas históricas de chat y compras personales adaptadas sin habilitar nuevas autocompras. Metro Android/iOS exportados sin bytecode en /tmp/ai-ticket-dd07-android y /tmp/ai-ticket-dd07-ios; interacción propia en celular pendiente. Sin nuevas dependencias ni migración de SDK.
+
+Verificación de arranque sin datos de negocio: runner backend 71 y frontend 135 correctos, incluida la carga de fixtures como módulos de prueba. La referencia inicial conserva solo dos perfiles y cinco categorías; no incorpora eventos/compras/reseñas/favoritos. Los escenarios completos de pruebas se movieron fuera de src y no los importa server.js. Se retiraron comandos demo y SEED_DEMO; no se ejecutó una limpieza por API ni se inició otra instancia del usuario.

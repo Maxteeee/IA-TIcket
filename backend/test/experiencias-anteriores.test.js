@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRepositories } from '../src/repositories/index.js';
 import { createServices } from '../src/services/index.js';
-import { seedDemoData } from '../src/data/demo.js';
+import { seedDemoData } from './fixtures/demo.js';
 import { Evento } from '../src/domain/Evento.js';
 import { Resenia } from '../src/domain/Resenia.js';
 import { experienciaAnteriorDto } from '../src/http/presenters.js';

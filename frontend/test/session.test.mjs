@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { authMock } from '../src/services/auth.mock.js';
 import { RolUsuario } from '../src/session/roles.js';
 import { canAccessPurchase, canAccessRoute, canManageEvent, canOrganize, canPurchase, canReviewPurchase, hasRole, selectSessionData } from '../src/session/permissions.js';
-import { initialEvents, initialFavoritesByUser, initialMessages, initialPurchases, organizers } from '../src/data/mockData.js';
+import { initialEvents, initialFavoritesByUser, initialMessages, initialPurchases, organizers } from './fixtures/mockData.js';
 
 const buyer = () => authMock.getSession('comprador-1');
 const organizer = () => authMock.getSession('organizador-1');

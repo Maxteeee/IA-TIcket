@@ -1,13 +1,13 @@
-import { Usuario } from '../domain/Usuario.js';
-import { Evento } from '../domain/Evento.js';
-import { TipoEntrada } from '../domain/TipoEntrada.js';
-import { Compra } from '../domain/Compra.js';
-import { EstadoCompra } from '../domain/EstadoCompra.js';
-import { Resenia } from '../domain/Resenia.js';
-import { RolUsuario } from '../domain/RolUsuario.js';
-import { seedCategories } from './reference.js';
+import { Usuario } from '../../src/domain/Usuario.js';
+import { Evento } from '../../src/domain/Evento.js';
+import { TipoEntrada } from '../../src/domain/TipoEntrada.js';
+import { Compra } from '../../src/domain/Compra.js';
+import { EstadoCompra } from '../../src/domain/EstadoCompra.js';
+import { Resenia } from '../../src/domain/Resenia.js';
+import { RolUsuario } from '../../src/domain/RolUsuario.js';
+import { seedCategories } from '../../src/data/reference.js';
 
-// Solo se carga al iniciar el servidor con --demo o SEED_DEMO=true.
+// Escenario exclusivo de pruebas; el servidor no carga datos de negocio.
 // IDs estables y sin sobrescritura: volver a invocarlo conserva datos existentes.
 export function seedDemoData(repositories, { now = () => new Date() } = {}) {
   const saveIfMissing = (repository, entity) => repository.findById(entity.id) ?? repository.save(entity);

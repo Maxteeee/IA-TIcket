@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRepositories } from '../src/repositories/index.js';
-import { seedDemoData } from '../src/data/demo.js';
+import { seedDemoData } from './fixtures/demo.js';
 import { createServices } from '../src/services/index.js';
 
 test('el catálogo de prueba usa entidades del backend y no sobrescribe ni duplica datos al recargarlo', () => {

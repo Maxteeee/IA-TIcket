@@ -37,7 +37,7 @@ Base en JavaScript para desarrollar el trabajo práctico. El frontend es una app
 
 El backend implementa usuarios, categorías, eventos, compras y reseñas mediante rutas → controladores → servicios → dominio/repositorios. Los tipos de entrada pertenecen al evento; los mensajes e historial, a la compra. El [análisis del dominio y contrato de la API](backend/README.md) explica las operaciones, reglas y límites. Se conserva el ejemplo `items`.
 
-El frontend conecta **C3, C11, C4, C12, C1, C2, C5, C6, C9, C10, C7 y C8: catálogo, publicación, compra, mis compras, ventas, chat, reseñas y cancelación/reembolso simulado** con la API; los demás recorridos conservan sus datos locales. Incluye **Comprador 1** y **Organizador 1**, con un botón superior para alternar y acciones según rol y propiedad. Hay que iniciar el backend y configurar su dirección accesible desde el celular. La compra permite elegir un tipo y cantidad, reserva cupo sin sobreventa y muestra un comprobante real; queda pendiente de pago, sin realizar un cobro. **Compras** muestra registros, estados y días restantes para confirmadas; cada compra tiene su conversación. Una compra utilizada permite puntuar y comentar cuando el evento finalizó. Desde el comprobante, C7 permite cancelar antes del inicio y devuelve cupo; las compras confirmadas reciben un reembolso del total original. Todos los importes a pagar/reembolsar son simulados, sin dinero real. **Explorar → evento → Experiencias anteriores** muestra reseñas de eventos anteriores finalizados del mismo organizador, con autor, puntuación, comentario y evento de origen. **Organizar → Tus eventos publicados → evento** muestra sus compras y disponibilidad; el propietario puede responder en el mismo historial del comprador y consultar la política de cancelación y los reembolsos simulados. Ver [perfiles y recorrido de prueba](frontend/README.md).
+El frontend conecta **C3, C11, C4, C12, C1, C2, C5, C6, C9, C10, C7 y C8: catálogo, publicación, compra, mis compras, ventas, chat, reseñas y cancelación/reembolso simulado** con la API; los favoritos se marcan manualmente sobre eventos reales y se conservan localmente por perfil durante la ejecución de la app. Incluye **Comprador 1** y **Organizador 1**, con un botón superior para alternar y acciones según rol y propiedad. Hay que iniciar el backend y configurar su dirección accesible desde el celular. La compra permite elegir un tipo y cantidad, reserva cupo sin sobreventa y muestra un comprobante real; queda pendiente de pago, sin realizar un cobro. **Compras** muestra registros, estados y días restantes para confirmadas; cada compra tiene su conversación. Una compra utilizada permite puntuar y comentar cuando el evento finalizó. Desde el comprobante, C7 permite cancelar antes del inicio y devuelve cupo; las compras confirmadas reciben un reembolso del total original. Todos los importes a pagar/reembolsar son simulados, sin dinero real. **Explorar → evento → Experiencias anteriores** muestra reseñas de eventos anteriores finalizados del mismo organizador, con autor, puntuación, comentario y evento de origen. **Organizar → Tus eventos publicados → evento** muestra sus compras y disponibilidad; el propietario puede responder en el mismo historial del comprador y consultar la política de cancelación y los reembolsos simulados. Ver [perfiles y recorrido de prueba](frontend/README.md).
 
 ## Requisitos
 
@@ -77,10 +77,8 @@ El backend ejecuta la API y mantiene los datos en memoria. Expo/Metro sirve el f
 | Directorio | Uso | Comando |
 | --- | --- | --- |
 | Raíz | API con recarga al editar | `npm run backend` |
-| Raíz | API con catálogo demo | `npm run backend:demo` |
 | backend | API con recarga, equivalente | `npm run dev` |
 | backend | API sin recarga automática | `npm start` |
-| backend | API demo con recarga | `npm run dev:demo` |
 | Raíz | Frontend por LAN | `npm run frontend` |
 | frontend | Frontend por LAN, equivalente | `npm start` |
 | frontend | Expo Go con LAN explícita | `npx expo start --go --lan` |
@@ -102,9 +100,9 @@ En una terminal, desde la raíz:
 npm run backend
 ```
 
-Para probar C3/C11 con categorías, eventos y puntajes iniciales, usar `npm run backend:demo` en lugar del arranque vacío. El detalle del recorrido está en [frontend/README.md](frontend/README.md).
+El arranque no precarga eventos, compras, mensajes, reseñas ni favoritos. Para probar C3/C11 y los demás casos, crear eventos desde Organizador 1 y operar como Comprador 1 según [frontend/README.md](frontend/README.md). Los datos completos de ejemplo están aislados en las carpetas de pruebas y nunca se cargan en la app.
 
-Ambos modos preparan los perfiles Comprador 1/Organizador 1 y cinco categorías. El modo normal no precarga eventos: podés publicarlos desde Organizar.
+Se conservan únicamente Comprador 1, Organizador 1 y las cinco categorías base, según lo acordado. Podés publicar tus propios eventos desde Organizar. Se retiraron los comandos/modos demo; una variable SEED_DEMO antigua no carga datos de negocio.
 
 El servidor escucha en todas las interfaces en el puerto 3000 y muestra las direcciones de red de la computadora. Abrí `http://localhost:3000/api/health` en la computadora para comprobarlo.
 
@@ -139,7 +137,7 @@ Podés comprobar la conexión abriendo `http://IP_DE_TU_PC:3000/api/health` desd
 3. Abrir `/api/categorias` en esa misma dirección: el inicio normal prepara cinco categorías y los dos perfiles, sin necesitar crear categorías en la app.
 4. Configurar `EXPO_PUBLIC_API_URL=http://IP_DE_TU_PC:3000/api` en frontend/.env. `PUBLIC_API_URL` en backend/.env puede usar el mismo valor para informar la URL; por sí sola no habilita el acceso ni configura el frontend.
 5. Abrir la app por el QR y recargarla. Si sigue usando una dirección anterior, detener **solo Expo** y usar el comando con `--clear` de la tabla. El túnel de Expo no soluciona el acceso a la API y un QR que abre la app no demuestra conexión con el backend.
-6. Como Organizador 1, publicar un evento futuro; consultarlo por `/api/eventos` desde el navegador. Como Comprador 1, comprar y comprobar desde Organizar que coincidan venta y cupo. Usar los recorridos conectados, separados de Recorrer ejemplos.
+6. Como Organizador 1, publicar un evento futuro; consultarlo por `/api/eventos` desde el navegador. Como Comprador 1, comprar y comprobar desde Organizar que coincidan venta y cupo. La app muestra únicamente los recorridos conectados, sin accesos a datos de ejemplo.
 
 Si el error menciona un SDK incompatible, revisar la instalación de Expo Go; si la app abre pero no carga categorías/eventos, comprobar la URL de la API. Si aparece EADDRINUSE, ya hay otro proceso escuchando en ese puerto. Los pasos de uso y la preparación manual de confirmación/utilización/reseñas están en [frontend/README.md](frontend/README.md).
 

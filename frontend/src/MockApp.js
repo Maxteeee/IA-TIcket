@@ -8,7 +8,6 @@ import SessionSwitcher from './components/SessionSwitcher';
 import { useMockSession } from './session/MockSessionProvider';
 import { RolUsuario } from './session/roles';
 import { canAccessPurchase, canAccessRoute, canManageEvent, canOrganize, canPurchase, canReviewPurchase, hasRole, selectSessionData } from './session/permissions';
-import CatalogScreen from './screens/CatalogScreen';
 import ConnectedCatalogScreen from './screens/ConnectedCatalogScreen';
 import CatalogEventScreen from './screens/CatalogEventScreen';
 import EventDetailScreen from './screens/EventDetailScreen';
@@ -58,7 +57,7 @@ export default function MockApp() {
     }
   };
   const toggleFavorite = (id) => {
-    if (!hasRole(session, RolUsuario.COMPRADOR) || !events.some((event) => event.id === id)) return;
+    if (!hasRole(session, RolUsuario.COMPRADOR) || typeof id !== 'string' || !id.trim()) return;
     setFavoritesByUser((current) => {
       const own = current[userId] ?? [];
       return { ...current, [userId]: own.includes(id) ? own.filter((item) => item !== id) : [...own, id] };
@@ -160,7 +159,8 @@ export default function MockApp() {
     content = <View style={{ flex: 1 }}><ScreenHeader title="Ventas de ejemplo" onBack={back} />
       <OrganizerScreen events={events} sales={sales} onCreate={() => open('create')} onOpenEvent={(eventId) => open('organizerEvent', { eventId })} /></View>;
   } else if (route?.name === 'catalogEvent') {
-    content = <CatalogEventScreen key={route.eventId} eventId={route.eventId} onBack={back} onPurchased={purchaseRegistered} />;
+    content = <CatalogEventScreen key={route.eventId} eventId={route.eventId} onBack={back} onPurchased={purchaseRegistered}
+      favorite={favoriteIds.includes(route.eventId)} onFavorite={() => toggleFavorite(route.eventId)} />;
   } else if (route?.name === 'event') {
     const event = events.find((item) => item.id === route.eventId);
     content = <EventDetailScreen key={event.id} event={event} organizer={organizers.find((item) => item.id === event.organizadorId)} favorite={favoriteIds.includes(event.id)} onFavorite={() => toggleFavorite(event.id)} onBack={back} onPurchase={simulatePurchase} onManage={canManageEvent(session, event) ? () => open('organizerEvent', { eventId: event.id }) : undefined} />;
@@ -182,19 +182,19 @@ export default function MockApp() {
   } else if (tab === 'explore') {
     content = <ConnectedCatalogScreen filters={catalogFiltersByUser[userId] ?? initialFilters}
       onFilters={(value) => setCatalogFiltersByUser((current) => ({ ...current, [userId]: value }))}
+      favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite}
       onOpenEvent={(eventId) => open('catalogEvent', { eventId })} />;
   } else if (tab === 'favorites') {
-    content = <CatalogScreen events={events} organizers={organizers} favoriteIds={favoriteIds}
-      onToggleFavorite={toggleFavorite} onOpenEvent={(eventId) => open('event', { eventId })}
+    content = <ConnectedCatalogScreen favoriteIds={favoriteIds}
+      onToggleFavorite={toggleFavorite} onOpenEvent={(eventId) => open('catalogEvent', { eventId })}
       filters={favoriteFiltersByUser[userId] ?? initialFilters}
       onFilters={(value) => setFavoriteFiltersByUser((current) => ({ ...current, [userId]: value }))}
       saved onExplore={explore} />;
   } else if (tab === 'purchases') {
     content = <ConnectedPurchasesScreen onOpenPurchase={(purchaseId) => open('purchaseReceipt', { purchaseId })}
-      onExplore={explore} onViewDemo={() => open('purchasesDemo')} />;
+      onExplore={explore} />;
   } else if (tab === 'organize' && canOrganize(session)) {
-    content = <ConnectedOrganizerScreen onCreate={() => open('create')} onOpenEvent={(eventId) => open('publishedEvent', { eventId })}
-      onViewDemo={() => open('organizerDemo')} />;
+    content = <ConnectedOrganizerScreen onCreate={() => open('create')} onOpenEvent={(eventId) => open('publishedEvent', { eventId })} />;
   } else {
     content = <EmptyState title="Esta sección no está disponible" action="Explorar eventos" onAction={explore} />;
   }

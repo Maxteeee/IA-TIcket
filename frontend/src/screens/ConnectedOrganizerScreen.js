@@ -6,7 +6,7 @@ import { eventsService } from '../services/events.service';
 import { colors, ui } from '../theme';
 import { dateLabel } from '../utils/mockPresentation';
 
-export default function ConnectedOrganizerScreen({ onCreate, onOpenEvent, onViewDemo }) {
+export default function ConnectedOrganizerScreen({ onCreate, onOpenEvent }) {
   const { session } = useMockSession();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,5 +41,5 @@ export default function ConnectedOrganizerScreen({ onCreate, onOpenEvent, onView
     ListEmptyComponent={loading ? <View accessibilityRole="progressbar" style={{ alignItems: 'center', gap: 12 }}><ActivityIndicator color={colors.primary} /><Text style={ui.text}>Cargando tus eventos…</Text></View>
       : error ? <EmptyState title="No pudimos cargar tus eventos" description={error} action="Volver a intentar" onAction={() => setRevision((value) => value + 1)} />
         : <EmptyState title="Tu próximo evento empieza acá" description="Creá un evento y ofrecé distintas entradas a tu público." />}
-    ListFooterComponent={<View style={{ paddingTop: 24 }}><Button title="Recorrer ventas de ejemplo" secondary onPress={onViewDemo} /></View>} />;
+    />;
 }

@@ -5,7 +5,7 @@ const profiles = [
   { usuario: { id: 'organizador-1', nombre: 'Organizador 1', initials: 'O1' }, roles: [RolUsuario.COMPRADOR, RolUsuario.ORGANIZADOR] },
 ];
 
-// Simula el contrato de una sesión. Los IDs son fixtures locales, todavía sin API.
+// Sesión de prueba sin login; los mismos dos IDs se preparan al iniciar el backend.
 export const authMock = {
   getSession(profileId = 'comprador-1') {
     const profile = profiles.find((item) => item.usuario.id === profileId);

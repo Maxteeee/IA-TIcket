@@ -10,7 +10,7 @@ import { RolUsuario } from '../session/roles';
 import { purchasesService } from '../services/purchases.service';
 import PreviousEventReviews from '../components/PreviousEventReviews';
 
-export default function CatalogEventScreen({ eventId, onBack, requireOwner = false, published = false, onViewPublic, onPurchased }) {
+export default function CatalogEventScreen({ eventId, onBack, requireOwner = false, published = false, onViewPublic, onPurchased, favorite, onFavorite }) {
   const { session } = useMockSession();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,7 +55,7 @@ export default function CatalogEventScreen({ eventId, onBack, requireOwner = fal
   if (event && !loading && !error) {
     return <View style={ui.screen}>
       {published ? <View style={{ padding: 16, backgroundColor: colors.successLight }} accessibilityRole="alert"><Text style={[ui.label, { color: colors.success }]}>✓ Tu evento fue publicado</Text></View> : null}
-      <EventDetailScreen event={event} organizer={event.organizador} onBack={onBack}
+      <EventDetailScreen event={event} organizer={event.organizador} onBack={onBack} favorite={favorite} onFavorite={onFavorite}
         purchaseEnabled={!requireOwner && Boolean(onPurchased)} purchaseMode="api"
         reviewsContent={<PreviousEventReviews key={event.id} eventId={event.id} organizerName={event.organizador.nombre} />}
         pendingPurchase={!requireOwner && hasRole(session, RolUsuario.COMPRADOR) ? purchasesService.getPending(session, eventId) : null}

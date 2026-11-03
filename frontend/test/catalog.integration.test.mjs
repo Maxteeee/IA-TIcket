@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createApp } from '../../backend/src/app.js';
 import { createRepositories } from '../../backend/src/repositories/index.js';
-import { seedDemoData } from '../../backend/src/data/demo.js';
+import { seedDemoData } from '../../backend/test/fixtures/demo.js';
 import { createServices } from '../../backend/src/services/index.js';
 import { createApiClient } from '../src/services/api.client.js';
 import { createCatalogService } from '../src/services/catalog.service.js';

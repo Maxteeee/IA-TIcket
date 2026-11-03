@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, FlatList, ScrollView, Text, View } from 'react-native';
-import { Button, Chip, EmptyState } from '../components/MockUI';
+import { Chip, EmptyState } from '../components/MockUI';
 import { useMockSession } from '../session/MockSessionProvider';
 import { purchasesService } from '../services/purchases.service';
 import { statusLabels } from '../utils/mockPresentation';
 import { colors, ui } from '../theme';
 import { PurchaseCard } from './PurchasesScreen';
 
-export default function ConnectedPurchasesScreen({ onOpenPurchase, onExplore, onViewDemo }) {
+export default function ConnectedPurchasesScreen({ onOpenPurchase, onExplore }) {
   const { session } = useMockSession();
   const [purchases, setPurchases] = useState([]);
   const [filter, setFilter] = useState('Todas');
@@ -53,5 +53,5 @@ export default function ConnectedPurchasesScreen({ onOpenPurchase, onExplore, on
       : error ? <EmptyState title="No pudimos cargar tus compras" description={error} action="Volver a intentar" onAction={reload} />
         : purchases.length ? <EmptyState icon="ticket" title="No tenés compras en este estado" description="Podés consultar los otros estados o ver todas tus compras." action="Ver todas" onAction={() => setFilter('Todas')} />
           : <EmptyState icon="ticket" title="Todavía no tenés compras" description="Buscá un evento y elegí tus entradas para empezar." action="Explorar eventos" onAction={onExplore} />}
-    ListFooterComponent={<View style={{ paddingTop: 24 }}><Button title="Recorrer compras de ejemplo" secondary onPress={onViewDemo} /></View>} />;
+    />;
 }

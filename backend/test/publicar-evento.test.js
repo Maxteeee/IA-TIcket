@@ -28,6 +28,10 @@ test('C4: roles válidos y datos de referencia idempotentes, sin eventos precarg
   assert.equal(s.repositories.usuarios.findAll().length, 2);
   assert.equal(s.repositories.categorias.findAll().length, 5);
   assert.deepEqual(s.repositories.eventos.findAll(), []);
+  assert.deepEqual(s.repositories.compras.findAll(), []);
+  assert.deepEqual(s.repositories.resenias.findAll(), []);
+  assert.deepEqual(buyer.favoritos, []);
+  assert.deepEqual(organizer.favoritos, []);
   const roles = [RolUsuario.ORGANIZADOR, RolUsuario.ORGANIZADOR];
   const user = new Usuario({ nombre: 'Ana', apellido: 'Pérez', roles });
   roles.length = 0;
