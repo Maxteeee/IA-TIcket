@@ -111,10 +111,9 @@ export class Compra {
     this.registrarEstado(quien, fechaHora);
   }
 
-  puedeReseniar(usuario, ahora) {
+  puedeReseniar(usuario) {
     return usuario === this.comprador
-      && this.estado === EstadoCompra.UTILIZADA
-      && this.evento.haFinalizado(ahora);
+      && this.estado === EstadoCompra.UTILIZADA;
   }
 
   puedeCancelar(usuario, ahora) {

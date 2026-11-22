@@ -109,7 +109,7 @@ test('el chat persiste orden y fecha, valida participantes y permanece disponibl
   assert.throws(() => s.services.compras.addMessage(compra.id, { mensaje: ' ' }, s.comprador.id), { status: 400 });
 });
 
-test('reseñar requiere ser comprador, compra utilizada y finalización explícita del evento', () => {
+test('reseñar requiere ser comprador y tener una compra utilizada aunque el evento no tenga fechaFin', () => {
   const s = scenario();
   const compra = s.buy();
   const data = { compraId: compra.id, detalle: 'Buen evento', puntuacion: 0 };
@@ -117,11 +117,7 @@ test('reseñar requiere ser comprador, compra utilizada y finalización explíci
   assert.throws(() => s.services.resenias.create(data, s.comprador.id), { status: 409 });
   s.services.compras.updateState(compra.id, { estado: 'CONFIRMADA' }, s.organizador.id);
   s.services.compras.updateState(compra.id, { estado: 'UTILIZADA' }, s.organizador.id);
-  assert.throws(() => s.services.resenias.create(data, s.comprador.id), { status: 409 });
-  s.advance('2026-11-04T00:00:00Z');
   s.services.eventos.update(s.evento.id, { fechaFin: null }, s.organizador.id);
-  assert.throws(() => s.services.resenias.create(data, s.comprador.id), { status: 409 });
-  s.services.eventos.update(s.evento.id, { fechaFin: '2026-11-03T23:00:00Z' }, s.organizador.id);
   const resenia = s.services.resenias.create(data, s.comprador.id);
   assert.equal(resenia.evento, s.evento);
   assert.equal(resenia.compra, compra);

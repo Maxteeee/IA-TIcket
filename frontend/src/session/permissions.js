@@ -9,7 +9,7 @@ export const canAccessPurchase = (session, purchase, event) => Boolean(purchase 
 export const canPurchase = (session, event, now = new Date()) => Boolean(event && hasRole(session, RolUsuario.COMPRADOR)
   && event.organizadorId !== session.usuario.id && !event.finalizadoDemo && new Date(event.fecha) > now);
 export const canReviewPurchase = (session, purchase, event) => Boolean(event && purchase?.eventoId === event.id
-  && isOwnPurchase(session, purchase) && purchase.estado === 'UTILIZADA' && event.finalizadoDemo && !purchase.resenada);
+  && isOwnPurchase(session, purchase) && purchase.estado === 'UTILIZADA' && !purchase.resenada);
 
 export function canAccessRoute(session, route, { events, purchases }) {
   if (!session?.usuario?.id) return false;

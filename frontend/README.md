@@ -40,7 +40,7 @@ Con Expo abierto, como **Comprador 1 → Explorar**:
 
 Se esperan 300 ms al escribir para no consultar por cada tecla. Al cambiar filtros, volver o alternar perfil se cancela la solicitud pendiente y sus respuestas atrasadas no pueden sobrescribir la consulta actual. Los filtros se conservan por perfil; las categorías se cargan al entrar y al actualizar/reintentar.
 
-C11 conecta el ordenamiento del catálogo con la API, según se describe a continuación. C4 publica, C12 compra, C1 consulta compras, C2 muestra ventas/cupos y C5/C6 conectan su chat. C9 permite reseñar desde una compra utilizada cuyo evento finalizó y C10 muestra experiencias anteriores del organizador en el detalle conectado. Favoritos consulta el mismo catálogo real y conserva la selección local por usuario; la publicación de reseñas se hace desde la compra. El detalle muestra **Lugar a confirmar** porque el dominio actual aún no modela ubicación.
+C11 conecta el ordenamiento del catálogo con la API, según se describe a continuación. C4 publica, C12 compra, C1 consulta compras, C2 muestra ventas/cupos y C5/C6 conectan su chat. C9 permite reseñar desde una compra utilizada sin exigir finalización del evento, y C10 muestra experiencias anteriores del organizador en el detalle conectado. Favoritos consulta el mismo catálogo real y conserva la selección local por usuario; la publicación de reseñas se hace desde la compra. El detalle muestra **Lugar a confirmar** porque el dominio actual aún no modela ubicación.
 
 ## C11: ordenar los resultados
 
@@ -169,16 +169,16 @@ C6 no agrega notificaciones, lectura, edición/borrado ni WebSocket/polling. C7 
 
 ## C9: puntuar y comentar un evento desde la compra
 
-1. Como **Comprador 1 → Compras**, abrir una compra real. Cuando esté UTILIZADA aparece **Tu experiencia cuenta**. **Reseña de mi compra** se habilita únicamente cuando también finalizó el evento, según el backend.
+1. Como **Comprador 1 → Compras**, abrir una compra real. Cuando esté UTILIZADA aparece **Tu experiencia cuenta** y se habilita **Reseña de mi compra**, según el backend. No hace falta esperar a que termine el evento ni cargar fechaFin.
 2. Abrir la reseña e ingresar una puntuación numérica de **0 a 5**, con coma o punto para decimales, y un comentario obligatorio de hasta **1500 caracteres**. Cero es una puntuación válida, distinta de dejar el campo vacío.
 3. Tocar **Publicar reseña**. Los campos se bloquean durante el envío; se confirma que fue publicada y se muestran el puntaje/comentario guardados para esa compra. No se presenta una reseña como guardada antes de recibir la respuesta válida del servidor.
 4. Volver al comprobante, abrir la reseña otra vez o recargar la app: sus reseñas se consultan por ID de compra y se recuperan mientras permanezca activo el mismo backend. No se mezclan con compras de otros usuarios ni con reseñas de la maqueta.
-5. Consultar un próximo evento del mismo organizador en Explorar: C11 muestra el promedio y conteo que incluyen la reseña publicada. C10 muestra también el texto, autor, puntaje y evento de origen en **Experiencias anteriores**.
+5. Consultar un próximo evento del mismo organizador en Explorar: C11 muestra el promedio y conteo que incluyen la reseña publicada. C10 muestra también el texto, autor, puntaje y evento de origen en **Experiencias anteriores** cuando el evento reseñado es anterior y está finalizado por fechaFin; esa selección conserva su regla independiente.
 6. Error de validación conserva el formulario. Si se pierde la respuesta, **Reintentar publicación** conserva puntuación, comentario y clave para recuperar la misma reseña sin duplicar ni alterar dos veces la reputación. Salir/perfil cancela solicitudes y evita respuestas tardías. Actualizar o volver a la app vuelve a consultar la habilitación del servidor.
 
-Se conserva la regla acordada de compra propia UTILIZADA **y** evento finalizado. La elegibilidad viene en `puedeReseniar`, calculada por el servidor; no se usa la hora del teléfono ni se confía en el estado enviado por el cliente. El backend vuelve a comprobar identidad/rol/propiedad y elegibilidad al guardar. Si faltó fechaFin, no se considera finalizado aunque haya pasado el inicio. Organizador 1 puede reseñar una compra personal, pero no las compras de los compradores de sus eventos.
+**DD-02 actualizada el 2026-11-22 por el usuario:** basta con una compra propia UTILIZADA, sin exigir finalización del evento ni fechaFin. La elegibilidad viene en `puedeReseniar`, calculada por el servidor; no se confía en el estado enviado por el cliente. El backend vuelve a comprobar identidad/rol/propiedad y elegibilidad al guardar. Organizador 1 puede reseñar una compra personal, pero no las compras de los compradores de sus eventos.
 
-**Preparar una prueba real:** el circuito de utilización y la fechaFin ya existen en el backend; C9 no agrega botones para marcar uso o finalizar eventos. Publicar un evento futuro, comprar antes de que comience y usar las operaciones siguientes con el ID de la compra y del evento publicado por Organizador 1:
+**Preparar una prueba real:** el circuito de utilización ya existe en el backend; C9 no agrega botones para marcar uso. Publicar un evento futuro, comprar antes de que comience y usar las operaciones siguientes con el ID de la compra del evento publicado por Organizador 1:
 
 ```bash
 curl -X PATCH http://localhost:3000/api/compras/ID_COMPRA/estado \
@@ -187,12 +187,9 @@ curl -X PATCH http://localhost:3000/api/compras/ID_COMPRA/estado \
 curl -X PATCH http://localhost:3000/api/compras/ID_COMPRA/estado \
   -H 'Content-Type: application/json' -H 'X-Usuario-Id: organizador-1' \
   -d '{"estado":"UTILIZADA"}'
-curl -X PATCH http://localhost:3000/api/eventos/ID_EVENTO \
-  -H 'Content-Type: application/json' -H 'X-Usuario-Id: organizador-1' \
-  -d '{"fechaFin":"FECHA_ISO_CON_ZONA_POSTERIOR_AL_INICIO"}'
 ```
 
-Confirmar debe hacerse antes del inicio. Usar una fechaFin válida posterior al inicio y actualizar el comprobante cuando el reloj del servidor la haya alcanzado; antes de ese instante la reseña permanece deshabilitada. No hay compras precargadas para los perfiles locales. Las pruebas automatizadas usan un reloj inyectado y no necesitan esperar ni reiniciar el servidor del usuario.
+Confirmar debe hacerse antes del inicio. Una vez marcada UTILIZADA, actualizar el comprobante y publicar la reseña: no es necesario modificar el evento ni esperar una fecha. No hay compras precargadas para los perfiles locales. Las pruebas automatizadas no necesitan esperar ni reiniciar el servidor del usuario.
 
 **Cantidad de reseñas pendiente de definición:** se mantiene la posibilidad previa del backend de publicar varias por compra; no se agregó una restricción de unicidad sin confirmación. Cada publicación confirmada es una reseña independiente; los reintentos con la misma clave recuperan la misma. La pantalla muestra las reseñas de esa compra. Las claves inciertas del cliente sobreviven navegación/perfil, pero se pierden al recargar completamente: consultar lo guardado antes de volver a publicar en ese caso.
 

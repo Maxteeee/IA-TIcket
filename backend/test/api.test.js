@@ -98,15 +98,13 @@ test('HTTP: chat e historial privados, contenido validado y sin restricciones po
   await s.request(`/compras/${compra.id}/historial`, { usuario: s.tercero.id, status: 403 });
 });
 
-test('HTTP: CRUD de reseñas y reputación respetan asistencia, finalización y autoría', async (t) => {
+test('HTTP: CRUD de reseñas y reputación respetan utilización y autoría sin esperar al fin del evento', async (t) => {
   const s = await setup(t);
   const compra = await s.buy();
   const body = { compraId: compra.id, puntuacion: 0, detalle: 'Mi experiencia' };
   await s.request('/resenias', { method: 'POST', body, usuario: s.comprador.id, status: 409 });
   await s.request(`/compras/${compra.id}/estado`, { method: 'PATCH', body: { estado: 'CONFIRMADA' }, usuario: s.organizador.id });
   await s.request(`/compras/${compra.id}/estado`, { method: 'PATCH', body: { estado: 'UTILIZADA' }, usuario: s.organizador.id });
-  await s.request('/resenias', { method: 'POST', body, usuario: s.comprador.id, status: 409 });
-  s.advance('2026-11-04T00:00:00Z');
   const review = await s.request('/resenias', { method: 'POST', body, usuario: s.comprador.id, status: 201 });
   assert.deepEqual(await s.request(`/resenias/${review.id}`), review);
   assert.deepEqual(await s.request(`/eventos/${s.evento.id}/resenias`), [review]);

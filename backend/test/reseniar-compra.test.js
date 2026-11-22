@@ -19,20 +19,35 @@ function scenario() {
   return { repositories, services, event, purchase, buy, finish, advance: (value) => { now = new Date(value); }, now: () => now };
 }
 
-test('C9: habilitación depende de utilización y finalización explícita con el reloj del servidor', () => {
+test('C9: solo el comprador de una compra utilizada puede reseñar, sin depender del fin del evento', () => {
   const s = scenario();
-  s.advance('2026-11-05T00:00:00Z');
-  for (const estado of ['PENDIENTE', 'CONFIRMADA', 'CANCELADA', 'REEMBOLSADA']) {
-    s.purchase.estado = estado;
-    assert.equal(compraDto(s.purchase, s.now()).puedeReseniar, false);
+  for (const fechaFin of [null, new Date('2026-11-04T22:00:00Z')]) {
+    s.event.fechaFin = fechaFin;
+    for (const instant of ['2026-11-02T12:00:00Z', '2026-11-04T21:00:00Z', '2026-11-04T22:00:00Z', '2026-11-05T00:00:00Z']) {
+      s.advance(instant);
+      for (const estado of ['PENDIENTE', 'CONFIRMADA', 'UTILIZADA', 'CANCELADA', 'REEMBOLSADA']) {
+        s.purchase.estado = estado;
+        assert.equal(compraDto(s.purchase, s.now()).puedeReseniar, estado === 'UTILIZADA');
+        assert.equal(s.purchase.puedeReseniar(s.repositories.usuarios.findById('otra-persona')), false);
+      }
+    }
   }
-  s.purchase.estado = 'UTILIZADA';
-  s.advance('2026-11-04T21:59:59Z');
-  assert.equal(compraDto(s.purchase, s.now()).puedeReseniar, false);
-  s.advance('2026-11-04T22:00:00Z');
-  assert.equal(compraDto(s.purchase, s.now()).puedeReseniar, true);
-  s.event.fechaFin = null;
-  assert.equal(compraDto(s.purchase, s.now()).puedeReseniar, false);
+});
+
+test('C9: publica tras utilizar una compra sin fechaFin o con el evento en curso', () => {
+  for (const fechaFin of [null, '2026-11-04T22:00:00Z']) {
+    const s = scenario();
+    s.services.eventos.update(s.event.id, { fechaFin }, 'organizador-1');
+    s.services.compras.updateState(s.purchase.id, { estado: 'CONFIRMADA' }, 'organizador-1');
+    s.advance('2026-11-04T21:00:00Z');
+    s.services.compras.updateState(s.purchase.id, { estado: 'UTILIZADA' }, 'organizador-1');
+    assert.equal(s.event.haFinalizado(s.now()), false);
+    const before = { cupo: s.purchase.tipoEntrada.cupo, estado: s.purchase.estado, historial: s.purchase.historial.length };
+    const review = s.services.resenias.create({ compraId: s.purchase.id, puntuacion: 4.5, detalle: 'Mi experiencia' }, 'comprador-1');
+    assert.equal(review.compra, s.purchase);
+    assert.equal(review.puntuacion, 4.5);
+    assert.deepEqual({ cupo: s.purchase.tipoEntrada.cupo, estado: s.purchase.estado, historial: s.purchase.historial.length }, before);
+  }
 });
 
 test('C9: guarda puntuación cero y comentario del comprador sin alterar compra, cupo ni historial', () => {

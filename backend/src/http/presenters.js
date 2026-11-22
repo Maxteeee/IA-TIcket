@@ -34,7 +34,7 @@ export function compraDto(compra, ahora = new Date()) {
     total: compra.total,
     estado: compra.estado,
     diasRestantes: compra.diasRestantes(ahora),
-    puedeReseniar: compra.puedeReseniar(compra.comprador, ahora),
+    puedeReseniar: compra.puedeReseniar(compra.comprador),
     puedeCancelar: compra.puedeCancelar(compra.comprador, ahora),
     reembolso: compra.reembolso ? { importe: compra.reembolso.importe, fecha: compra.reembolso.fecha.toISOString(), simulado: true } : null,
   };

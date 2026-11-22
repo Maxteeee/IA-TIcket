@@ -12,6 +12,7 @@ import { createReviewsService } from '../src/services/reviews.service.js';
 import { createCatalogService } from '../src/services/catalog.service.js';
 import { authMock } from '../src/services/auth.mock.js';
 import { preparePurchaseIntent } from '../src/utils/purchaseIntent.js';
+import { prepareEventDraft } from '../src/utils/eventDraft.js';
 
 async function setup(t) {
   let now = new Date('2026-11-02T12:00:00Z');
@@ -74,26 +75,52 @@ test('C9 punta a punta: compra utilizada y evento finalizado permiten publicar c
   assert.deepEqual({ cupo: original.tipoEntrada.cupo, historial: original.historial.length, estado: original.estado }, before);
 });
 
-test('C9 punta a punta: servidor decide habilitación, incluye frontera de fechaFin y rechaza un estado desactualizado', async (t) => {
+test('C9 punta a punta: servidor exige utilización, sin depender de fechaFin, y rechaza un estado desactualizado', async (t) => {
   const s = await setup(t);
   const body = { puntuacion: 4.5, detalle: 'Comentario' };
   assert.equal((await s.reviews.load(s.purchase.id, s.buyer)).purchase.puedeReseniar, false);
   await assert.rejects(s.reviews.create(s.purchase.id, body, s.buyer), { status: 409 });
   await s.use();
+  assert.equal((await s.purchases.get(s.purchase.id, s.buyer)).puedeReseniar, true);
   s.advance('2026-11-04T21:59:59Z');
-  assert.equal((await s.purchases.get(s.purchase.id, s.buyer)).puedeReseniar, false);
-  await assert.rejects(s.reviews.create(s.purchase.id, body, s.buyer), { status: 409 });
+  assert.equal((await s.purchases.get(s.purchase.id, s.buyer)).puedeReseniar, true);
   s.advance('2026-11-04T22:00:00Z');
   assert.equal((await s.purchases.get(s.purchase.id, s.buyer)).puedeReseniar, true);
   await s.patch(`/eventos/${s.event.id}`, { fechaFin: null });
-  assert.equal((await s.purchases.get(s.purchase.id, s.buyer)).puedeReseniar, false);
-  await assert.rejects(s.reviews.create(s.purchase.id, body, s.buyer), { status: 409 });
+  assert.equal((await s.purchases.get(s.purchase.id, s.buyer)).puedeReseniar, true);
   await s.patch(`/eventos/${s.event.id}`, { fechaFin: '2026-11-04T22:00:00Z' });
   assert.equal((await s.reviews.load(s.purchase.id, s.buyer)).purchase.puedeReseniar, true);
   s.repositories.compras.findById(s.purchase.id).estado = 'CONFIRMADA'; // Cambio de datos entre consulta y confirmación.
   await assert.rejects(s.reviews.create(s.purchase.id, body, s.buyer), { status: 409 });
   assert.deepEqual(s.repositories.resenias.findAll(), []);
   assert.equal(s.reviews.getPending(s.purchase.id, s.buyer), null);
+});
+
+test('C9 punta a punta: evento del formulario sin fechaFin admite reseña al utilizar y conserva selección C10', async (t) => {
+  const s = await setup(t);
+  const draft = prepareEventDraft({ name: 'Evento desde la app', description: 'Sin fecha de finalización',
+    date: '04/11/2026', time: '20:00', categoryId: 'demo-categoria-1',
+    tickets: [{ nombre: 'General', descripcion: '', precio: '10,25', cupo: '3' }] }, new Date('2026-11-02T12:00:00Z'));
+  assert.equal(Object.hasOwn(draft, 'fechaFin'), false);
+  const event = await createEventsService(s.client).create(draft, s.organizer);
+  assert.equal(event.fechaFin, null);
+  const purchase = await s.purchases.create(preparePurchaseIntent(event, event.tiposEntrada[0].id, 2), s.buyer);
+  await s.use(purchase.id);
+  const before = await s.purchases.get(purchase.id, s.buyer);
+  assert.equal(before.puedeReseniar, true);
+  assert.equal((await s.catalog.getEvent(event.id)).finalizadoDemo, false);
+  const review = await s.reviews.create(purchase.id, { puntuacion: '4,5', detalle: 'Ya utilicé mi entrada' }, s.buyer);
+  assert.deepEqual((await createReviewsService(s.client).load(purchase.id, s.buyer)).reviews, [review]);
+  assert.deepEqual(await s.purchases.get(purchase.id, s.buyer), before);
+  assert.equal((await s.catalog.getEvent(event.id)).tiposEntrada[0].cupo, 1);
+  const reputation = (await s.catalog.getEvent(s.nextEvent.id)).organizador;
+  assert.equal(reputation.puntaje, 4.5);
+  assert.equal(reputation.cantidadResenias, 1);
+  assert.deepEqual(await s.catalog.getPreviousReviews(s.nextEvent.id), []);
+  await s.patch(`/eventos/${event.id}`, { fechaFin: new Date(new Date(event.fecha).getTime() + 7200000).toISOString() });
+  assert.deepEqual(await s.catalog.getPreviousReviews(s.nextEvent.id), []);
+  s.advance(new Date(new Date(event.fecha).getTime() + 7200000).toISOString());
+  assert.equal((await s.catalog.getPreviousReviews(s.nextEvent.id))[0].id, review.id);
 });
 
 test('C9 punta a punta: solo comprador propietario, contenido validado y sin autor o evento elegidos por cliente', async (t) => {

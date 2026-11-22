@@ -110,7 +110,7 @@ export default function PurchaseReceiptScreen({ purchaseId, onBack, onEvent, onE
           <Button title="Actualizar compra" secondary disabled={busy} onPress={reload} />
           {onChat ? <View style={ui.card}><Text style={ui.heading}>Conversá con el organizador</Text><Text style={ui.text}>Consultá lo que necesites sobre esta compra, antes o después del evento.</Text><Button title="Abrir conversación" icon="chat" onPress={onChat} /></View> : null}
           {onReview && data.purchase.estado === 'UTILIZADA' ? <View style={ui.card}><Text style={ui.heading}>Tu experiencia cuenta</Text>
-            <Text style={ui.text}>{data.purchase.puedeReseniar ? 'Compartí tu puntuación y un comentario sobre este evento.' : 'Podrás puntuar y comentar cuando el evento haya finalizado.'}</Text>
+            <Text style={ui.text}>{data.purchase.puedeReseniar ? 'Compartí tu puntuación y un comentario sobre este evento.' : 'Actualizá la compra para consultar si podés puntuar y comentar.'}</Text>
             <Button title="Reseña de mi compra" icon="star" disabled={!data.purchase.puedeReseniar} onPress={onReview} />
           </View> : null}
           <Button title="Volver al evento" secondary onPress={() => onEvent(data.event.id)} />

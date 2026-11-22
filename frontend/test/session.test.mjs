@@ -176,7 +176,7 @@ test('el chat identifica autores por usuario y no se bloquea por estado o fecha 
   }
 });
 
-test('solo el comprador propietario reseña una compra utilizada de un evento finalizado', () => {
+test('solo el comprador propietario reseña una compra utilizada, sin exigir finalización', () => {
   const data = state();
   const purchase = data.purchases.find((item) => item.id === 'AT-1982');
   const event = data.events.find((item) => item.id === purchase.eventoId);
@@ -184,7 +184,7 @@ test('solo el comprador propietario reseña una compra utilizada de un evento fi
   assert.equal(canReviewPurchase(organizer(), purchase, event), false);
   assert.equal(canReviewPurchase(buyer(), { ...purchase, resenada: true }, event), false);
   assert.equal(canReviewPurchase(buyer(), { ...purchase, estado: 'CONFIRMADA' }, event), false);
-  assert.equal(canReviewPurchase(buyer(), purchase, { ...event, finalizadoDemo: false }), false);
+  assert.equal(canReviewPurchase(buyer(), purchase, { ...event, finalizadoDemo: false }), true);
   assert.equal(canReviewPurchase(buyer(), purchase, ownEvent), false);
 });
 

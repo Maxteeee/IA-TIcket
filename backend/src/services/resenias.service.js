@@ -3,7 +3,7 @@ import { DomainError } from '../domain/DomainError.js';
 import { RolUsuario } from '../domain/RolUsuario.js';
 import { actor, authorize, conflict, fields, number, required, text } from './validation.js';
 
-export function createReseniasService(repositories, { now }) {
+export function createReseniasService(repositories) {
   const { resenias, compras, eventos, usuarios } = repositories;
   const attempts = new Map();
   const get = (id) => required(resenias, id, 'Reseña');
@@ -46,7 +46,7 @@ export function createReseniasService(repositories, { now }) {
         conflict(!resenias.findById(previous.review.id), 'La reseña anterior ya no está disponible');
         return previous.review;
       }
-      conflict(!compra.puedeReseniar(comprador, now()), 'Para reseñar se requiere una compra utilizada y un evento finalizado con fechaFin');
+      conflict(!compra.puedeReseniar(comprador), 'Para reseñar se requiere una compra utilizada');
       const review = resenias.save(new Resenia({ ...prepared, comprador, evento: compra.evento, compra }));
       if (key) attempts.set(key, { payload: JSON.stringify(prepared), review });
       return review;

@@ -95,14 +95,14 @@ export default function PurchaseReviewScreen({ purchaseId, onBack }) {
           {sendError ? <Text accessibilityRole="alert" style={{ color: colors.danger }}>{sendError}</Text> : null}
           {data.purchase.puedeReseniar || pending ? <View style={ui.card}>
             <Text style={ui.heading}>¿Cómo fue tu experiencia?</Text>
-            <Text style={ui.text}>Tu compra fue utilizada y el evento finalizó. Compartí tu puntuación y un comentario.</Text>
+            <Text style={ui.text}>Tu compra fue utilizada. Compartí tu puntuación y un comentario.</Text>
             <Text style={ui.label}>Puntuación · 0 a 5</Text>
             <TextInput accessibilityLabel="Puntuación de 0 a 5" value={score} onChangeText={setScore} editable={!frozen} keyboardType="decimal-pad" placeholder="Por ejemplo, 4,5" placeholderTextColor={colors.muted} style={ui.input} />
             <Text style={ui.label}>Comentario</Text>
             <TextInput accessibilityLabel="Comentario de la reseña" value={comment} onChangeText={setComment} editable={!frozen} multiline maxLength={1500} placeholder="Contá cómo viviste el evento…" placeholderTextColor={colors.muted} style={[ui.input, { minHeight: 110, textAlignVertical: 'top' }]} />
             <Text style={ui.caption}>{comment.length}/1500</Text>
             <Button title={busy ? 'Publicando…' : pending ? 'Reintentar publicación' : 'Publicar reseña'} icon="star" disabled={busy || !score.trim() || !comment.trim()} onPress={publish} />
-          </View> : <View style={ui.card}><Text style={ui.label}>La reseña todavía no está habilitada</Text><Text style={ui.text}>Necesitás una compra utilizada y que el evento haya finalizado.</Text><Button title="Actualizar" secondary onPress={reload} /></View>}
+          </View> : <View style={ui.card}><Text style={ui.label}>La reseña todavía no está habilitada</Text><Text style={ui.text}>Necesitás que tu compra esté utilizada para puntuar y comentar.</Text><Button title="Actualizar" secondary onPress={reload} /></View>}
           {data.reviews.length ? <View style={{ gap: 12 }}><Text style={ui.heading}>Tus reseñas de esta compra</Text>{data.reviews.map((review) => <View key={review.id} style={ui.card}>
             <Text style={[ui.label, { color: colors.primary }]}>Puntuación: {String(review.puntuacion).replace('.', ',')} / 5</Text><Text style={ui.text}>{review.detalle}</Text>
           </View>)}</View> : null}
