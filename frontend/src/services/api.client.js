@@ -53,6 +53,7 @@ export function createApiClient({ baseUrl = API_URL, fetchImpl = globalThis.fetc
   return {
     get: (path, options) => request(path, { ...options, method: 'GET' }),
     post: (path, body, options) => request(path, { ...options, method: 'POST', body }),
+    patch: (path, body, options) => request(path, { ...options, method: 'PATCH', body }),
   };
 }
 

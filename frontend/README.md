@@ -105,16 +105,7 @@ La compra vive en el backend y sobrevive a recargar la app mientras ese proceso 
 
 Los días provienen del reloj del servidor: períodos de 24 horas hasta el inicio, redondeados hacia arriba, mínimo cero. Se muestra **1 día restante**, **2 días restantes**, etc.; una confirmada cuyo evento comenzó muestra **0 días restantes**. No se usa la hora del teléfono para recalcularlos ni se ocultan las compras de eventos pasados. El DTO incluye el nombre y fecha del evento, evitando depender del catálogo de próximos eventos o consultar cada tarjeta por separado.
 
-Las compras nuevas siguen PENDIENTE porque no hay pagos conectados. Para revisar manualmente una confirmada de un evento publicado por Organizador 1, se puede usar la operación de estado existente del backend con el ID del comprobante, antes de que empiece el evento:
-
-```bash
-curl -X PATCH http://localhost:3000/api/compras/ID_COMPRA/estado \
-  -H 'Content-Type: application/json' \
-  -H 'X-Usuario-Id: organizador-1' \
-  -d '{"estado":"CONFIRMADA"}'
-```
-
-Actualizar Compras en el teléfono para ver el cambio y los días. Esto usa el circuito manual existente, sin ejecutar un pago. Las pruebas automatizadas cubren los cinco estados con datos aislados; C1 no agrega transiciones de cancelación/reembolso. El arranque solo prepara los dos perfiles y categorías; las compras deben crearse desde la app.
+Las compras nuevas quedan PENDIENTE y reservan cupo. Para confirmarlas, alternar a **Organizador 1 → Organizar → evento → compra → Confirmar pago simulado** y aceptar el aviso. Volver a **Comprador 1 → Compras** para consultar la confirmación y los días restantes. No se ejecuta un cobro real. El arranque solo prepara los dos perfiles y categorías; las compras deben crearse desde la app.
 
 Compras muestra únicamente registros de la API. Sin compras creadas por el usuario, la lista está vacía; no hay datos de ejemplo como respaldo.
 
@@ -132,9 +123,24 @@ Con el backend activo y la API configurada:
 
 Solo el propietario con rol ORGANIZADOR puede consultar esta información. El backend lo valida aun si el frontend declara un rol falso; haber comprado una entrada no permite acceder a todas las ventas. Las compras de otros eventos no se mezclan. **Ver publicación en el catálogo** permite volver al detalle público cuando la sesión también tiene capacidad de comprador.
 
-El cupo mostrado ya es la cantidad restante del backend: no se descuentan las compras una segunda vez. Las pendientes reservan según la regla existente y confirmar/utilizar no vuelven a descontar. La operación manual de confirmación de la sección C1 permite revisar otro estado sin agregar pagos ni botones de modificación en esta pantalla. Si se edita un tipo por API, la disponibilidad muestra sus datos actuales y cada compra conserva su nombre/precio originales.
+El cupo mostrado ya es la cantidad restante del backend: no se descuentan las compras una segunda vez. Las pendientes reservan según la regla existente y confirmar/utilizar no vuelven a descontar. Los botones de pago simulado y utilización permiten cambiar estados mediante las operaciones existentes del backend, como se describe en la sección siguiente. Si se edita un tipo por API, la disponibilidad muestra sus datos actuales y cada compra conserva su nombre/precio originales.
 
-El panel de C2 no agrega edición, pagos, cancelación ni devolución de cupo. C6 agrega **Abrir conversación** en cada compra, reutilizando el chat de C5. El panel muestra únicamente las compras reales del evento. Además de históricos aislados, C7 ahora genera cancelaciones/reembolsos simulados reales del backend, visibles al consultar este panel otra vez.
+El panel conserva los controles de rol y propiedad; la cancelación y devolución de cupo siguen a cargo del flujo del comprador. C6 agrega **Abrir conversación** en cada compra, reutilizando el chat de C5. El panel muestra únicamente las compras reales del evento. Además de históricos aislados, C7 ahora genera cancelaciones/reembolsos simulados reales del backend, visibles al consultar este panel otra vez.
+
+## Pagos simulados y utilización desde Organizar
+
+1. Como **Comprador 1**, comprar entradas de un evento futuro con C12. La compra queda PENDIENTE y ya reserva su cupo.
+2. Alternar a **Organizador 1 → Organizar → evento**. En la compra pendiente tocar **Confirmar pago simulado**, revisar el importe y aceptar **Sí, confirmar pago simulado**. **Volver sin cambios** descarta la confirmación. El aviso explica que no hay un cobro real.
+3. La compra pasa a CONFIRMADA. Al volver a **Comprador 1 → Compras**, se ven los días restantes; antes del inicio puede cancelarse con el reembolso simulado del total original.
+4. En la compra confirmada del panel del organizador, tocar **Marcar como utilizada** y aceptar el aviso. La acción aplica a todas las entradas de esa compra, sin nuevos descuentos de cupo. El estado pasa a UTILIZADA.
+5. Como comprador, reabrir la compra: ya no admite cancelación y permite puntuar y comentar sin requerir fechaFin. El chat continúa disponible.
+6. Si falla una solicitud, se consulta nuevamente el resumen para recuperar el estado actual. Si tampoco se logra actualizar, las modificaciones quedan bloqueadas hasta tocar **Actualizar compras** o arrastrar para actualizar. La pantalla informa el resultado; no supone éxito por haber pulsado un botón.
+
+Solo el organizador propietario puede confirmar/utilizar. El servidor conserva PENDIENTE → CONFIRMADA → UTILIZADA, sin saltos ni retrocesos. Confirmar exige que el evento no haya comenzado; una cancelación concurrente se valida otra vez en el servidor. Las compras utilizadas, canceladas y reembolsadas no ofrecen estos botones. No se agrega una restricción temporal nueva para utilización.
+
+El cliente consulta primero la compra privada y verifica evento/propietario; `salesService.updatePurchaseState` hace PATCH `/compras/:id/estado` con solo `{estado}`. La doble pulsación comparte la operación. Si al reintentar ya está en el estado solicitado, se recupera por GET sin repetir PATCH ni historial. No se realizan reintentos automáticos de escritura. Las actualizaciones manuales/al volver del segundo plano se bloquean durante el envío; salir/perfil cancela y descarta respuestas tardías. El resumen completo se vuelve a consultar para reflejar compras y disponibilidad del servidor.
+
+No hay pasarela, tarjetas ni movimiento de dinero. Se reutilizan estados, total histórico e historial existentes, sin entidad de pagos, dependencia o endpoint nuevo. Confirmar y utilizar no vuelven a reservar entradas; cancelar una confirmada conserva la devolución simulada de C7.
 
 ## C5: enviar mensajes desde una compra
 
@@ -178,33 +184,22 @@ C6 no agrega notificaciones, lectura, edición/borrado ni WebSocket/polling. C7 
 
 **DD-02 actualizada el 2026-11-22 por el usuario:** basta con una compra propia UTILIZADA, sin exigir finalización del evento ni fechaFin. La elegibilidad viene en `puedeReseniar`, calculada por el servidor; no se confía en el estado enviado por el cliente. El backend vuelve a comprobar identidad/rol/propiedad y elegibilidad al guardar. Organizador 1 puede reseñar una compra personal, pero no las compras de los compradores de sus eventos.
 
-**Preparar una prueba real:** el circuito de utilización ya existe en el backend; C9 no agrega botones para marcar uso. Publicar un evento futuro, comprar antes de que comience y usar las operaciones siguientes con el ID de la compra del evento publicado por Organizador 1:
-
-```bash
-curl -X PATCH http://localhost:3000/api/compras/ID_COMPRA/estado \
-  -H 'Content-Type: application/json' -H 'X-Usuario-Id: organizador-1' \
-  -d '{"estado":"CONFIRMADA"}'
-curl -X PATCH http://localhost:3000/api/compras/ID_COMPRA/estado \
-  -H 'Content-Type: application/json' -H 'X-Usuario-Id: organizador-1' \
-  -d '{"estado":"UTILIZADA"}'
-```
-
-Confirmar debe hacerse antes del inicio. Una vez marcada UTILIZADA, actualizar el comprobante y publicar la reseña: no es necesario modificar el evento ni esperar una fecha. No hay compras precargadas para los perfiles locales. Las pruebas automatizadas no necesitan esperar ni reiniciar el servidor del usuario.
+**Preparar una prueba real:** publicar un evento futuro, comprar desde Comprador 1 y alternar a Organizador 1. En **Organizar → evento**, confirmar el pago simulado y marcar la compra como utilizada con sus respectivos avisos. Volver a **Comprador 1 → Compras → compra**, actualizar y publicar la reseña. No hace falta modificar el evento ni esperar una fecha; las pruebas automáticas usan datos aislados y no requieren reiniciar el servidor del usuario.
 
 **Cantidad de reseñas pendiente de definición:** se mantiene la posibilidad previa del backend de publicar varias por compra; no se agregó una restricción de unicidad sin confirmación. Cada publicación confirmada es una reseña independiente; los reintentos con la misma clave recuperan la misma. La pantalla muestra las reseñas de esa compra. Las claves inciertas del cliente sobreviven navegación/perfil, pero se pierden al recargar completamente: consultar lo guardado antes de volver a publicar en ese caso.
 
-C9 no agrega edición/borrado desde la app, cambios de estado ni cancelación/reembolso. C10 incorpora la lectura pública descrita a continuación. No hay formularios alimentados con compras o reseñas precargadas.
+C9 no agrega edición/borrado de reseñas desde la app; la utilización se registra desde el panel del organizador y la cancelación/reembolso desde el comprobante del comprador. C10 incorpora la lectura pública descrita a continuación. No hay formularios alimentados con compras o reseñas precargadas.
 
 ## C7: cancelar una compra y recuperar el importe simulado
 
 1. Como **Comprador 1**, comprar un evento futuro y abrir **Compras → compra → Cancelar compra**. Se muestra el efecto antes de confirmar y se puede elegir **Conservar compra**.
 2. Para una **pendiente**, confirmar la cancelación: queda **Cancelada** y devuelve sus entradas al cupo. El comprobante muestra el total/importe pendiente como simulado; no hay reembolso porque no había pago confirmado.
-3. Para una **confirmada**, preparar otra compra y confirmar mediante el PATCH manual del apartado C1, siempre antes del inicio. Actualizar el comprobante y cancelar: se anticipa el total original a reembolsar; al recibir la respuesta queda **Reembolsada**, con importe, fecha y aviso explícito de simulación. El historial guarda CANCELADA y luego REEMBOLSADA. Si el precio del tipo cambió, devuelve el total original de esa compra. Una compra gratuita conserva reembolso cero.
+3. Para una **confirmada**, preparar otra compra y confirmar el pago simulado desde el panel del organizador, siempre antes del inicio. Actualizar el comprobante y cancelar: se anticipa el total original a reembolsar; al recibir la respuesta queda **Reembolsada**, con importe, fecha y aviso explícito de simulación. El historial guarda CANCELADA y luego REEMBOLSADA. Si el precio del tipo cambió, devuelve el total original de esa compra. Una compra gratuita conserva reembolso cero.
 4. Volver a **Mis compras**: aparece el estado actualizado. Como **Organizador 1**, consultar el evento en Organizar para ver el estado de la venta y el cupo recuperado del tipo elegido. El chat continúa disponible.
 5. Compra utilizada o evento iniciado: no ofrece cancelación y explica la restricción. Si el inicio ocurre después de cargar la pantalla, el servidor rechaza al confirmar y se vuelve a consultar el comprobante. No depende de la hora del teléfono ni de fechaFin.
 6. Si falla la conexión, muestra **Reintentar cancelación** y **Actualizar compra** para recuperar el resultado. Reabrir el comprobante o recargar la app también consulta el estado guardado mientras viva el backend. Reintentar nunca devuelve cupo ni importe por segunda vez, incluso si el evento comenzó o esas entradas ya fueron vendidas de nuevo.
 
-Reglas confirmadas: solo comprador propietario con rol COMPRADOR; PENDIENTE/CONFIRMADA y estrictamente antes del inicio. Devolución completa de cupo una vez; pendientes sin reembolso, confirmadas con devolución simulada del total original. Las restricciones expresadas en C8 se aplican en esta misma operación necesaria para C7; no hay una acción adicional del organizador para aprobar o ejecutar la cancelación. **Todos los importes a pagar y reembolsar son simulados; no hay dinero real.** La confirmación/utilización siguen siendo manuales por API, sin agregar pagos ni sus botones.
+Reglas confirmadas: solo comprador propietario con rol COMPRADOR; PENDIENTE/CONFIRMADA y estrictamente antes del inicio. Devolución completa de cupo una vez; pendientes sin reembolso, confirmadas con devolución simulada del total original. Las restricciones expresadas en C8 se aplican en esta misma operación necesaria para C7; no hay una acción adicional del organizador para aprobar o ejecutar la cancelación. **Todos los importes a pagar y reembolsar son simulados; no hay dinero real.** La confirmación del pago simulado y la utilización se registran desde los botones del panel del organizador, reutilizando la API existente.
 
 `purchasesService.cancel` hace POST `/compras/:id/cancelacion` con `{}` e identidad de prueba, coalesce doble pulsación por comprador/compra y valida estado/autor/ID/reembolso del servidor. El DTO incluye `puedeCancelar` y `reembolso: null | {importe,fecha,simulado:true}`; las otras pantallas los preservan. Los históricos con solo estado REEMBOLSADA sin registro no inventan un importe devuelto. Comprobante bloquea envío/refresco simultáneos, cancela solicitudes al salir/perfil y descarta respuestas tardías. Backend realiza la operación completa de forma síncrona e idempotente; no necesita conservar una clave de cancelación en el teléfono ni crea entidad/repositorio de pagos.
 
@@ -217,7 +212,7 @@ Para probar el seguimiento:
 1. Crear un evento con General y VIP, y comprar como Comprador 1. En Organizar se ven la compra y el cupo reservado.
 2. Cancelar desde el comprobante del comprador según C7. Reabrir el panel del evento o arrastrar para actualizar: se ve **Cancelada**, o **Reembolsada** si estaba confirmada, y el cupo recuperado del mismo tipo. Los otros tipos no cambian. Los filtros conservan todos esos estados.
 3. Cada venta muestra **Total simulado** y, si tiene registro, **Reembolso simulado** con el importe original. Los registros históricos sin datos de reembolso no inventan un monto. El chat permanece disponible.
-4. Utilizar otra compra con el circuito manual existente: la cancelación del comprador se bloquea, conserva estado/cupo y no genera un reembolso. Desde el instante de inicio también se bloquea, aunque no tenga fechaFin o el comprador haya abierto el comprobante antes del límite.
+4. Marcar otra compra confirmada como utilizada desde el panel del organizador: la cancelación del comprador se bloquea, conserva estado/cupo y no genera un reembolso. Desde el instante de inicio también se bloquea, aunque no tenga fechaFin o el comprador haya abierto el comprobante antes del límite.
 
 La validación usa el reloj del servidor. Ante utilización/cancelación simultáneas solo una puede completarse: si se utiliza primero no hay devolución; si se cancela primero no puede utilizarse luego. El panel consulta el resultado actual del backend; no resta ni devuelve cupo por su cuenta, y se actualiza al entrar, arrastrar o volver a la app. El organizador consulta sus ventas, mientras el comprador ejecuta la cancelación de su propia compra.
 
@@ -244,7 +239,7 @@ npx expo start --go --tunnel
 2. Como Comprador 1, buscarlo en Explorar, abrirlo y comprar. Verificar comprobante, listado propio y cupos desde Organizador 1. El organizador no compra entradas de su propio evento (DD-07).
 3. Abrir el chat desde el comprobante, enviar y responder como organizador desde esa venta. No hay conversaciones anteriores precargadas.
 4. En Explorar o el detalle, tocar el corazón para guardar un evento real. Favoritos comienza vacío, permite quitarlo y conserva selecciones separadas por perfil durante esta ejecución de la app. La selección es local: todavía no se persiste por la API y se pierde con una recarga completa. Los favoritos no los asigna el organizador ni se cargan automáticamente.
-5. Preparar manualmente los estados según C1/C7/C9 para probar días, cancelación/reembolso simulado y reseñas; el arranque no inventa esos estados ni sus datos.
+5. Confirmar el pago simulado y registrar utilización desde Organizar según las secciones anteriores para probar días, cancelación/reembolso simulado y reseñas; el arranque no inventa esos estados ni sus datos.
 
 Los eventos/compras/mensajes/reseñas creados viven en el backend mientras el proceso siga activo; los favoritos locales viven en la app. Hacer una recarga completa de Expo Go tras actualizar desde una versión con fixtures para descartar el estado anterior conservado por Fast Refresh. Reiniciar el backend elimina su memoria, incluidas creaciones propias; no se ejecuta un borrado de registros por API.
 
@@ -258,7 +253,7 @@ Los eventos/compras/mensajes/reseñas creados viven en el backend mientras el pr
 - `src/utils/eventDraft.js`: validación y preparación del formulario, sin IDs temporales en el contrato.
 - `src/screens/ConnectedCreateEventScreen.js` y `ConnectedOrganizerScreen.js`: categorías, envío, publicaciones propias y estados de carga/error/vacío.
 - `src/services/sales.service.js`: consulta privada de compras y cupos de un evento, validando organizador, evento, tipos y compradores del resumen.
-- `src/screens/EventSalesScreen.js`: panel C2 desde publicaciones propias, disponibilidad completa, compras por estado y actualización/reintento.
+- `src/screens/EventSalesScreen.js`: panel desde publicaciones propias, disponibilidad, compras por estado, confirmación de pago simulado/utilización con aviso y actualización/reintento.
 - `src/services/chat.service.js`: perspectivas comprador/organizador, propiedad/relación con evento, mensajes, validación de texto/DTOs e intentos de envío por autor/compra.
 - `src/screens/ConnectedChatScreen.js`: chat compartido desde comprobante o venta, etiquetas por perspectiva, historial, compositor, envío confirmado, errores y reintentos sin duplicados.
 - `src/services/reviews.service.js`: carga por compra, validación de puntuación/comentario/DTOs y publicación con reintento sin duplicados.

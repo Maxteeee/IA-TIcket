@@ -12,6 +12,7 @@ import { createPurchasesService } from '../src/services/purchases.service.js';
 import { createSalesService } from '../src/services/sales.service.js';
 import { authMock } from '../src/services/auth.mock.js';
 import { preparePurchaseIntent } from '../src/utils/purchaseIntent.js';
+import { createReviewsService } from '../src/services/reviews.service.js';
 
 async function setup(t, generalCupo = 3) {
   let now = new Date('2026-11-01T12:00:00Z');
@@ -140,4 +141,84 @@ test('C2 punta a punta: comprador participante y organizador ajeno no pueden lee
   await assert.rejects(s.client.get(`/eventos/${s.event.id}/compras`, { usuarioId: 'comprador-1' }), { status: 403 });
   const publicEvent = await s.client.get(`/eventos/${s.event.id}`);
   assert.equal(Object.hasOwn(publicEvent, 'compras'), false);
+});
+
+test('pagos simulados punta a punta: confirmar, utilizar y reseñar sin fechaFin conserva cupo e historial', async (t) => {
+  const s = await setup(t);
+  const purchase = await s.buy(s.buyer, s.event, 0, 2);
+  const refunded = await s.buy();
+  const onlyOrganizer = { usuario: s.organizer.usuario, roles: ['ORGANIZADOR'] };
+  s.repositories.usuarios.findById(s.organizer.usuario.id).roles = ['ORGANIZADOR'];
+  const confirmed = await s.sales.updatePurchaseState(s.event.id, purchase.id, 'CONFIRMADA', onlyOrganizer);
+  assert.equal(confirmed.estado, 'CONFIRMADA');
+  assert.ok(confirmed.diasRestantes > 0);
+  assert.equal((await s.purchases.listOwn(s.buyer)).find(item => item.id === purchase.id).estado, 'CONFIRMADA');
+  await s.sales.updatePurchaseState(s.event.id, purchase.id, 'CONFIRMADA', onlyOrganizer);
+  const used = await s.sales.updatePurchaseState(s.event.id, purchase.id, 'UTILIZADA', onlyOrganizer);
+  await s.sales.updatePurchaseState(s.event.id, purchase.id, 'UTILIZADA', onlyOrganizer);
+  assert.equal(used.puedeReseniar, true);
+  assert.equal(used.puedeCancelar, false);
+  const review = await createReviewsService(s.client).create(purchase.id, { puntuacion: '4,5', detalle: 'Mi experiencia' }, s.buyer);
+  assert.equal(review.compraId, purchase.id);
+  await assert.rejects(s.purchases.cancel(purchase.id, s.buyer), { status: 409 });
+  await s.sales.updatePurchaseState(s.event.id, refunded.id, 'CONFIRMADA', onlyOrganizer);
+  const cancellation = await s.purchases.cancel(refunded.id, s.buyer);
+  assert.equal(cancellation.estado, 'REEMBOLSADA');
+  assert.equal(cancellation.reembolso.importe, 10.25);
+  assert.equal(cancellation.reembolso.simulado, true);
+  const summary = await s.sales.getEventSales(s.event.id, onlyOrganizer);
+  assert.deepEqual(summary.evento.tiposEntrada.map(ticket => ticket.cupo), [1, 2, 0]);
+  assert.deepEqual(s.repositories.compras.findById(purchase.id).historial.map(item => item.estado), ['PENDIENTE', 'CONFIRMADA', 'UTILIZADA']);
+  assert.equal(used.total, 20.5);
+});
+
+test('pagos simulados punta a punta: respuesta perdida y recarga no duplican confirmación ni reservan cupo', async (t) => {
+  const s = await setup(t);
+  const purchase = await s.buy();
+  let patches = 0;
+  // Se envuelve el cliente real para perder únicamente la respuesta de una escritura ya aplicada.
+  const unreliable = { get: (...args) => s.client.get(...args), patch: async (...args) => {
+    patches++;
+    await s.client.patch(...args);
+    throw new TypeError('Respuesta perdida después de confirmar');
+  } };
+  const sales = createSalesService(unreliable);
+  await assert.rejects(sales.updatePurchaseState(s.event.id, purchase.id, 'CONFIRMADA', s.organizer), /Respuesta perdida/);
+  const recovered = await sales.updatePurchaseState(s.event.id, purchase.id, 'CONFIRMADA', s.organizer);
+  assert.equal(recovered.estado, 'CONFIRMADA');
+  assert.equal((await createSalesService(s.client).updatePurchaseState(s.event.id, purchase.id, 'CONFIRMADA', s.organizer)).id, purchase.id);
+  assert.equal(patches, 1);
+  assert.equal(s.repositories.compras.findById(purchase.id).historial.length, 2);
+  assert.equal((await s.sales.getEventSales(s.event.id, s.organizer)).evento.tiposEntrada[0].cupo, 2);
+});
+
+test('pagos simulados punta a punta: comprador, organizador ajeno y rol falso no cambian estados', async (t) => {
+  const s = await setup(t);
+  const purchase = await s.buy();
+  for (const session of [s.buyer, s.otherOrganizer, { ...s.buyer, roles: ['ORGANIZADOR'] }]) {
+    await assert.rejects(async () => s.sales.updatePurchaseState(s.event.id, purchase.id, 'CONFIRMADA', session), { status: 403 });
+  }
+  await assert.rejects(s.sales.updatePurchaseState(s.anotherOwn.id, purchase.id, 'CONFIRMADA', s.organizer), { status: 403 });
+  await assert.rejects(s.sales.updatePurchaseState(s.event.id, purchase.id, 'UTILIZADA', s.organizer), { status: 409 });
+  s.repositories.usuarios.findById(s.organizer.usuario.id).roles = ['COMPRADOR'];
+  await assert.rejects(s.sales.updatePurchaseState(s.event.id, purchase.id, 'CONFIRMADA', s.organizer), { status: 403 });
+  assert.equal(s.repositories.compras.findById(purchase.id).estado, 'PENDIENTE');
+  assert.equal(s.repositories.compras.findById(purchase.id).historial.length, 1);
+});
+
+test('pagos simulados punta a punta: inicio exacto impide confirmar, y cancelación entre lectura y PATCH gana', async (t) => {
+  const s = await setup(t);
+  const purchase = await s.buy();
+  const late = await s.buy();
+  const client = { get: (...args) => s.client.get(...args), patch: async (...args) => {
+    await s.purchases.cancel(purchase.id, s.buyer);
+    return s.client.patch(...args);
+  } };
+  await assert.rejects(createSalesService(client).updatePurchaseState(s.event.id, purchase.id, 'CONFIRMADA', s.organizer), { status: 409 });
+  assert.equal(s.repositories.compras.findById(purchase.id).estado, 'CANCELADA');
+  s.advance(s.event.fecha);
+  await assert.rejects(s.sales.updatePurchaseState(s.event.id, late.id, 'CONFIRMADA', s.organizer), { status: 409 });
+  const summary = await s.sales.getEventSales(s.event.id, s.organizer);
+  assert.equal(summary.compras.find(item => item.id === late.id).estado, 'PENDIENTE');
+  assert.equal(summary.evento.tiposEntrada[0].cupo, 2);
 });

@@ -111,7 +111,7 @@ Todas las rutas siguientes llevan prefijo `/api`. `PATCH` modifica únicamente l
 | GET | `/eventos/:id/experiencias-anteriores` | Reseñas de eventos anteriores y finalizados del mismo organizador |
 | GET, POST | `/compras` | Mis compras/crear una compra propia |
 | GET | `/compras/:id` | Detalle, solo para comprador u organizador |
-| PATCH | `/compras/:id/estado` | Confirmación/utilización manual por el organizador |
+| PATCH | `/compras/:id/estado` | Confirmación de pago simulado/utilización por el organizador, conectada al panel móvil |
 | POST | `/compras/:id/cancelacion` | C7: cancelación propia, devolución de cupo y reembolso simulado si estaba confirmada |
 | GET, POST | `/compras/:id/mensajes` | Consultar/agregar mensajes, solo participantes |
 | GET | `/compras/:id/historial` | Cambios con estado, autor y fecha, solo participantes |
@@ -172,6 +172,12 @@ Solo CONFIRMADA devuelve `diasRestantes`: diferencia hasta el inicio en período
 
 ## Reglas implementadas y decisiones técnicas
 
+### Confirmación de pago simulado y utilización desde el panel móvil
+
+El panel del organizador conecta los botones **Confirmar pago simulado** y **Marcar como utilizada** con PATCH `/compras/:id/estado`. Reutiliza las reglas existentes: solo el organizador de la compra, PENDIENTE → CONFIRMADA → UTILIZADA, confirmación estrictamente antes del inicio. No cambia las transiciones ni agrega pasarela, pago real, entidad o endpoint. El historial conserva autor/fecha y confirmar/utilizar no descuentan cupo otra vez.
+
+El cliente obtiene primero la compra privada y valida evento/organizador; envía únicamente `{estado}`. Coalesce llamadas simultáneas y recupera un estado ya alcanzado por GET sin repetir PATCH. La API conserva el rechazo de transiciones repetidas por PATCH; el cliente consulta el estado tras errores o respuestas perdidas. El panel actualiza el resumen completo, bloquea modificaciones si no logra recuperar el estado y mantiene los controles del servidor ante cancelaciones concurrentes, roles falsos e inicio alcanzado.
+
 ### C2: compras y disponibilidad por evento
 
 `GET /eventos/:id/ventas` exige `X-Usuario-Id`, rol ORGANIZADOR almacenado y propiedad del evento. Devuelve `{evento, compras}`. `evento` incluye id, nombre, fecha, organizadorId y todos los tipos con id/nombre/descripción/precio/cupo. Cada compra usa el DTO de C1/C12 y agrega solo `comprador: {id, nombre, apellido}` para identificar al comprador; no se serializa el grafo de usuarios ni su información de otros eventos.
@@ -202,7 +208,7 @@ La consulta pública existente de reseñas agrega el filtro compraId. La pantall
 
 El POST admite Idempotency-Key opcional, validada como las otras publicaciones y limitada a comprador/compra. Repetir clave y contenido normalizado devuelve la misma reseña sin duplicarla ni inflar el promedio; cambiar contenido da 409. Si la reseña fue borrada por la API existente, esa clave no la recrea. Fallos de validación no guardan ni consumen la clave. La app conserva el intento incierto en memoria al navegar/cambiar perfil, sin persistencia tras una recarga completa.
 
-**Cantidad por compra pendiente de definición:** se consultó al usuario y se conserva la regla previa del backend, que permite varias reseñas. No se agregó unicidad por compra ni por usuario/evento. Un reintento de la misma operación no es una segunda reseña. No se incorporan edición/borrado desde la app, límites nuevos de frecuencia, cierre manual del evento ni registro de uso desde UI; para probarlos se usan las operaciones de backend ya existentes descritas en frontend/README.md.
+**Cantidad por compra pendiente de definición:** se consultó al usuario y se conserva la regla previa del backend, que permite varias reseñas. No se agregó unicidad por compra ni por usuario/evento. Un reintento de la misma operación no es una segunda reseña. No se incorporan edición/borrado de reseñas desde la app, límites nuevos de frecuencia ni cierre manual del evento. La confirmación de pago simulado y el registro de uso desde UI reutilizan las operaciones existentes del backend, descritas en frontend/README.md.
 
 ### C10: experiencias de eventos anteriores del organizador
 
@@ -227,7 +233,7 @@ Reglas confirmadas por el usuario para esta entrega: solo una compra PENDIENTE o
 
 DTO de compras (creación/lista/detalle/ventas/cancelación) agrega `puedeCancelar`, derivado de dominio y reloj del servidor, y `reembolso`, null o `{importe, fecha: ISO, simulado: true}`. El importe es el total histórico, aunque se editen precios después. Datos históricos que solo tenían estado REEMBOLSADA sin registro conservan null; no se inventan devoluciones. La app distingue ese contrato y exige un registro válido para confirmar el éxito de una nueva cancelación reembolsada.
 
-Cancelar de nuevo una compra CANCELADA/REEMBOLSADA recupera el resultado existente, aun después del inicio, sin repetir cupo, importe ni historial. Se verifican identidad/rol/propiedad antes de recuperar. No se necesita Idempotency-Key para esta operación terminal. El PATCH manual de estados conserva exclusivamente confirmación/utilización; no permite saltarse la cancelación mediante un estado arbitrario. Chat e historial permanecen disponibles para sus participantes después de cancelar.
+Cancelar de nuevo una compra CANCELADA/REEMBOLSADA recupera el resultado existente, aun después del inicio, sin repetir cupo, importe ni historial. Se verifican identidad/rol/propiedad antes de recuperar. No se necesita Idempotency-Key para esta operación terminal. El PATCH de estados conserva exclusivamente confirmación/utilización; no permite saltarse la cancelación mediante un estado arbitrario. Chat e historial permanecen disponibles para sus participantes después de cancelar.
 
 ### C8: condiciones garantizadas para las cancelaciones del comprador
 
@@ -239,7 +245,7 @@ La misma operación síncrona protege la carrera entre utilizar y cancelar: amba
 
 - **Compra:** rol COMPRADOR, tipo perteneciente al evento, evento aún no iniciado y cantidad entera positiva. Total calculado en centavos, sin confiar en valores del cliente; precio unitario, nombre del tipo y total se conservan aunque se edite la entrada. Si se envía precio esperado y difiere del vigente, se rechaza sin reservar. Los precios admiten hasta dos decimales y los importes están limitados por la precisión segura de JavaScript.
 - **Cupo:** provisionalmente se reserva al crear `PENDIENTE`; confirmar y utilizar no vuelven a descontar. Comprobación, reserva y guardado son síncronos dentro del mismo proceso. Esto evita sobreventa en este servidor en memoria; no es una transacción distribuida.
-- **Estados:** circuito manual básico `PENDIENTE → CONFIRMADA → UTILIZADA`, solo por el organizador. Cada paso registra fecha/autor; saltos y repeticiones fallan sin modificar datos. No se confirma después del inicio del evento. Este circuito no procesa un pago ni valida un ticket físico.
+- **Estados:** circuito `PENDIENTE → CONFIRMADA → UTILIZADA`, solo por el organizador, con confirmación de pago simulado y uso desde el panel móvil. Cada paso registra fecha/autor; saltos y repeticiones fallan sin modificar datos. No se confirma después del inicio del evento. Este circuito no procesa un pago ni valida un ticket físico.
 - **Historial y chat:** historial automático de creación y cambios. Chat disponible en cualquier estado y fecha, exclusivamente para comprador y organizador; mensajes sin edición ni borrado.
 - **Reseñas:** exige comprador de la compra, estado `UTILIZADA` y `fechaFin` alcanzada. Escala 0–5, incluidas fracciones y cero. Promedio aritmético de todas las reseñas del organizador; sin reseñas devuelve `null`. La cantidad máxima por compra/comprador sigue sin definirse, por lo que no se impone unicidad en esta etapa.
 - **Precios de catálogo:** rango mínimo–máximo y mínimo para ordenar, incluyendo tipos agotados como convención técnica explícita. No se guarda el rango como otro precio.
@@ -247,7 +253,7 @@ La misma operación síncrona protege la carrera entre utilizar y cancelar: amba
 - **Integridad:** no se borra categoría usada, usuario con eventos/compras/reseñas, evento con compras/reseñas ni tipo con compras. Siempre queda al menos un tipo por evento. Borrar un evento sin compras limpia favoritos. Reprogramar un evento con compras se rechaza hasta definir ese flujo.
 - **Edición de cupo:** `cupo` representa disponibilidad restante, no capacidad inicial. Actualizarlo establece la disponibilidad restante deseada. Una edición de tipos mantiene su ID y las referencias de compras anteriores.
 
-La reserva en pendientes, el circuito manual, `fechaFin`, los redondeos y desempates son elecciones de esta implementación, diferenciadas de las decisiones previas confirmadas por el usuario. La consulta sobre el momento de descontar cupo queda abierta a su respuesta. Para C7 sí quedaron confirmados corte antes del inicio, devolución de cupo una vez, pendientes sin reembolso y confirmadas con reembolso total simulado.
+La reserva en pendientes, `fechaFin`, los redondeos y desempates son elecciones de esta implementación, diferenciadas de las decisiones previas confirmadas por el usuario. El 2026-11-22 el usuario confirmó el uso de pagos simulados y registro de utilización desde el panel del organizador. La consulta sobre el momento de descontar cupo queda abierta a su respuesta. Para C7 sí quedaron confirmados corte antes del inicio, devolución de cupo una vez, pendientes sin reembolso y confirmadas con reembolso total simulado.
 
 **Pendientes conservados:** expiración automática de reservas y unicidad de reseñas. No se expone borrado de compras ni edición libre de cantidad, total o asociaciones. Las reservas pendientes no caducan; C7 permite cancelarlas y devolver cupo. No hay pagos reales ni autenticación/persistencia; los importes a pagar/reembolsar son siempre simulados. C3/C11/C4/C12/C1/C2/C5/C6/C9/C10/C7/C8 consumen la API.
 
