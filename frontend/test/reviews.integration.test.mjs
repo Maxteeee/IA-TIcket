@@ -13,6 +13,7 @@ import { createCatalogService } from '../src/services/catalog.service.js';
 import { authMock } from '../src/services/auth.mock.js';
 import { preparePurchaseIntent } from '../src/utils/purchaseIntent.js';
 import { prepareEventDraft } from '../src/utils/eventDraft.js';
+import { createSalesService } from '../src/services/sales.service.js';
 
 async function setup(t) {
   let now = new Date('2026-11-02T12:00:00Z');
@@ -96,7 +97,7 @@ test('C9 punta a punta: servidor exige utilización, sin depender de fechaFin, y
   assert.equal(s.reviews.getPending(s.purchase.id, s.buyer), null);
 });
 
-test('C9 punta a punta: evento del formulario sin fechaFin admite reseña al utilizar y conserva selección C10', async (t) => {
+test('C9→C10 punta a punta: evento del formulario sin fechaFin permite reseñar y mostrar la experiencia en otra edición', async (t) => {
   const s = await setup(t);
   const draft = prepareEventDraft({ name: 'Evento desde la app', description: 'Sin fecha de finalización',
     date: '04/11/2026', time: '20:00', categoryId: 'demo-categoria-1',
@@ -105,7 +106,9 @@ test('C9 punta a punta: evento del formulario sin fechaFin admite reseña al uti
   const event = await createEventsService(s.client).create(draft, s.organizer);
   assert.equal(event.fechaFin, null);
   const purchase = await s.purchases.create(preparePurchaseIntent(event, event.tiposEntrada[0].id, 2), s.buyer);
-  await s.use(purchase.id);
+  const sales = createSalesService(s.client);
+  await sales.updatePurchaseState(event.id, purchase.id, 'CONFIRMADA', s.organizer);
+  await sales.updatePurchaseState(event.id, purchase.id, 'UTILIZADA', s.organizer);
   const before = await s.purchases.get(purchase.id, s.buyer);
   assert.equal(before.puedeReseniar, true);
   assert.equal((await s.catalog.getEvent(event.id)).finalizadoDemo, false);
@@ -116,9 +119,16 @@ test('C9 punta a punta: evento del formulario sin fechaFin admite reseña al uti
   const reputation = (await s.catalog.getEvent(s.nextEvent.id)).organizador;
   assert.equal(reputation.puntaje, 4.5);
   assert.equal(reputation.cantidadResenias, 1);
-  assert.deepEqual(await s.catalog.getPreviousReviews(s.nextEvent.id), []);
+  const [experience] = await s.catalog.getPreviousReviews(s.nextEvent.id);
+  assert.equal(experience.id, review.id);
+  assert.equal(experience.evento.fechaFin, null);
+  assert.equal(experience.autor, 'Comprador 1');
+  assert.equal(experience.evento.id, event.id);
+  assert.equal(experience.puntuacion, 4.5);
+  assert.equal(experience.detalle, 'Ya utilicé mi entrada');
+  assert.deepEqual(await s.catalog.getPreviousReviews(event.id), []);
   await s.patch(`/eventos/${event.id}`, { fechaFin: new Date(new Date(event.fecha).getTime() + 7200000).toISOString() });
-  assert.deepEqual(await s.catalog.getPreviousReviews(s.nextEvent.id), []);
+  assert.equal((await s.catalog.getPreviousReviews(s.nextEvent.id))[0].id, review.id);
   s.advance(new Date(new Date(event.fecha).getTime() + 7200000).toISOString());
   assert.equal((await s.catalog.getPreviousReviews(s.nextEvent.id))[0].id, review.id);
 });

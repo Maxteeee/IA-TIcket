@@ -163,7 +163,7 @@ El chat se abre desde el comprobante del comprador o desde la venta del organiza
 - Solo el organizador del evento confirma el pago simulado y registra el uso. La confirmación exige que el evento no haya comenzado. El uso afecta a todas las entradas de la compra.
 - Cancelar una pendiente devuelve cupo sin reembolso; cancelar una confirmada devuelve cupo y registra el reembolso simulado del total original. Ambas requieren que el evento no haya comenzado.
 - Para reseñar se exige una compra propia **UTILIZADA**, sin requerir `fechaFin`. Se admite más de una reseña por compra; los reintentos de una misma publicación no la duplican.
-- **Experiencias anteriores** selecciona reseñas de eventos anteriores y finalizados del mismo organizador. Conserva la condición `fechaFin` alcanzada; el formulario móvil no permite cargar ese campo. Es una condición distinta de la habilitación para publicar una reseña.
+- **Experiencias anteriores** muestra reseñas de otros eventos del mismo organizador cuya fecha de inicio es anterior a la del evento consultado. No exige `fechaFin` ni finalización; excluye el propio evento y los de igual fecha o posteriores.
 - Los perfiles son simulados y la API usa `X-Usuario-Id` como identidad de desarrollo. No hay login ni autenticación real.
 - Los datos del backend se pierden al reiniciar su proceso. Los favoritos y filtros viven en el cliente por perfil; los favoritos no se sincronizan con la API y se pierden al recargar la app.
 - El chat se actualiza al abrirlo, solicitar actualización o volver del segundo plano. No incorpora recepción en tiempo real ni notificaciones.

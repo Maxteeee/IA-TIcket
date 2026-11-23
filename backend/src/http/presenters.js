@@ -57,5 +57,5 @@ export const experienciaAnteriorDto = (resenia) => ({
   ...reseniaDto(resenia),
   comprador: { id: resenia.comprador.id, nombre: resenia.comprador.nombre, apellido: resenia.comprador.apellido },
   evento: { id: resenia.evento.id, nombre: resenia.evento.nombre, organizadorId: resenia.evento.organizador.id,
-    fecha: resenia.evento.fecha.toISOString(), fechaFin: resenia.evento.fechaFin.toISOString() },
+    fecha: resenia.evento.fecha.toISOString(), fechaFin: resenia.evento.fechaFin?.toISOString() ?? null },
 });

@@ -114,9 +114,9 @@ Solo el comprador de la compra y el organizador de su evento acceden al chat, co
 
 Publicar una reseña exige rol `COMPRADOR` y una compra propia `UTILIZADA`. **No exige `fechaFin` ni finalización del evento.** La puntuación es numérica de `0` a `5`, admite fracciones y requiere comentario de `1` a `1500` caracteres. Se permite más de una reseña por compra. Publicar no modifica cupo, estado, total ni historial.
 
-La consulta de **experiencias anteriores** conserva una selección independiente: evento distinto, del mismo organizador, con inicio anterior al evento consultado y `fechaFin` alcanzada. No restringe por categoría. Un evento sin fin explícito o aún en curso no aporta reseñas a esa lista, aunque sus reseñas sí cuenten para el promedio global del organizador.
+La consulta de **experiencias anteriores** selecciona reseñas de un evento distinto, del mismo organizador, con inicio estrictamente anterior al evento consultado. No restringe por categoría ni exige `fechaFin` o finalización. Excluye el propio evento, los simultáneos y los posteriores. La comparación es entre las fechas de los eventos, sin una condición adicional sobre el reloj actual.
 
-El formulario móvil no ofrece `fechaFin`; ese dato puede gestionarse mediante la API. Las pruebas de experiencias anteriores utilizan fechas y relojes controlados.
+El formulario móvil no ofrece `fechaFin`, pero el recorrido completo de publicación → compra → utilización → reseña → experiencias anteriores funciona sin ese campo. El DTO de experiencias conserva `fechaFin` como fecha ISO o `null`; si está presente, el frontend valida su formato y su relación con el inicio. La definición de `finalizado` del evento sigue siendo independiente y no cambia por publicar o consultar reseñas. El promedio general del organizador continúa incluyendo todas sus reseñas.
 
 ## Contrato HTTP
 
@@ -160,7 +160,7 @@ Los errores se responden como `{"message":"Descripción del error"}`.
 | GET | `/eventos/:id/compras` | Lista privada de ventas del organizador. |
 | GET | `/eventos/:id/ventas` | Resumen privado de compras y cupos del organizador. |
 | GET | `/eventos/:id/resenias` | Reseñas públicas del evento. |
-| GET | `/eventos/:id/experiencias-anteriores` | Reseñas públicas de eventos anteriores finalizados del organizador. |
+| GET | `/eventos/:id/experiencias-anteriores` | Reseñas públicas de eventos anteriores del mismo organizador, sin exigir fecha de fin. |
 | GET | `/compras` | Compras propias; con `eventoId`, ventas de un evento propio. |
 | POST | `/compras` | Comprar entradas como comprador. |
 | GET | `/compras/:id` | Comprador u organizador participante con su rol. |

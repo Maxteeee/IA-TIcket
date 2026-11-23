@@ -44,8 +44,8 @@ export function previousReviewFromDto(dto) {
     || dto.comprador?.id !== dto.compradorId || typeof dto.comprador?.nombre !== 'string' || !dto.comprador.nombre.trim()
     || typeof dto.comprador.apellido !== 'string' || dto.evento?.id !== dto.eventoId
     || typeof dto.evento?.nombre !== 'string' || !dto.evento.nombre.trim() || !hasId(dto.evento.organizadorId)
-    || !hasDate(dto.evento.fecha) || !hasDate(dto.evento.fechaFin)
-    || new Date(dto.evento.fechaFin) < new Date(dto.evento.fecha)) throw invalidResponse();
+    || !hasDate(dto.evento.fecha) || (dto.evento.fechaFin !== null && (!hasDate(dto.evento.fechaFin)
+      || new Date(dto.evento.fechaFin) < new Date(dto.evento.fecha)))) throw invalidResponse();
   return { id: dto.id, compradorId: dto.compradorId, eventoId: dto.eventoId,
     autor: `${dto.comprador.nombre} ${dto.comprador.apellido}`.trim(),
     puntuacion: dto.puntuacion, detalle: dto.detalle,

@@ -22,32 +22,33 @@ function scenario() {
   return { repositories, services, add, advance: (value) => { now = new Date(value); } };
 }
 
-test('C10: reúne reseñas de distintos eventos anteriores finalizados del mismo organizador', () => {
+test('C10: reúne reseñas de eventos anteriores del mismo organizador, sin exigir finalización', () => {
   const s = scenario();
   const target = s.add('publicación', '2026-10-25T20:00:00Z', '2026-10-25T22:00:00Z');
   const earlier = s.add('otra-categoría', '2026-10-20T20:00:00Z', '2026-10-20T22:00:00Z');
   earlier.event.categoria = s.repositories.categorias.findById('demo-categoria-2');
   s.add('posterior', '2026-10-28T20:00:00Z', '2026-10-28T22:00:00Z');
   s.add('simultáneo', '2026-10-25T20:00:00Z', '2026-10-25T22:00:00Z');
-  s.add('sin-fin', '2026-10-20T20:00:00Z', null);
-  s.add('en-curso', '2026-10-20T20:00:00Z', '2026-11-02T22:00:00Z');
+  const withoutEnd = s.add('sin-fin', '2026-10-20T20:00:00Z', null);
+  const ongoing = s.add('en-curso', '2026-10-20T20:00:00Z', '2026-11-02T22:00:00Z');
+  s.add('otro-organizador', '2026-10-20T20:00:00Z', null, s.repositories.eventos.findById('demo-teatro').organizador);
   const reviews = s.services.eventos.previousReviews(target.event.id);
-  assert.deepEqual(reviews.map((review) => review.id), ['demo-resenia-1', 'demo-resenia-2', earlier.review.id]);
+  assert.deepEqual(reviews.map((review) => review.id), ['demo-resenia-1', 'demo-resenia-2', earlier.review.id, withoutEnd.review.id, ongoing.review.id]);
   assert.equal(reviews.at(-1).puntuacion, 0);
   assert.ok(reviews.every((review) => review.evento.organizador === target.event.organizador));
   assert.equal(s.services.eventos.getReputation(target.event).cantidadResenias, 8);
 });
 
-test('C10: usa fechaFin explícita y el límite exacto del reloj; distingue vacío de evento inexistente', () => {
+test('C10: cambiar reloj o fechaFin no oculta experiencias; distingue vacío de evento inexistente', () => {
   const s = scenario();
   const past = s.repositories.eventos.findById('demo-pasado');
   const end = past.fechaFin.toISOString();
   s.advance(new Date(past.fechaFin.getTime() - 1).toISOString());
-  assert.deepEqual(s.services.eventos.previousReviews('demo-concierto'), []);
+  assert.equal(s.services.eventos.previousReviews('demo-concierto').length, 2);
   s.advance(end);
   assert.equal(s.services.eventos.previousReviews('demo-concierto').length, 2);
   past.fechaFin = null;
-  assert.deepEqual(s.services.eventos.previousReviews('demo-concierto'), []);
+  assert.equal(s.services.eventos.previousReviews('demo-concierto').length, 2);
   assert.deepEqual(s.services.eventos.previousReviews('demo-conferencia'), []);
   assert.throws(() => s.services.eventos.previousReviews('inexistente'), { status: 404 });
 });
@@ -64,4 +65,9 @@ test('C10: presenter agrega autor y evento públicos sin serializar compras, rol
   assert.equal(Object.hasOwn(dto, 'compra'), false);
   assert.equal(Object.hasOwn(dto.comprador, 'roles'), false);
   assert.doesNotThrow(() => JSON.stringify(dto));
+  review.evento.fechaFin = null;
+  const withoutEnd = experienciaAnteriorDto(review);
+  assert.equal(withoutEnd.evento.fechaFin, null);
+  assert.equal(withoutEnd.id, dto.id);
+  assert.doesNotThrow(() => JSON.stringify(withoutEnd));
 });

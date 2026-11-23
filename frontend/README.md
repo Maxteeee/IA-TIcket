@@ -78,7 +78,7 @@ No es necesario esperar a que termine el evento ni cargar `fechaFin`. El servido
 
 En **Explorar → evento → Experiencias anteriores**, se muestran autor, puntuación, comentario y evento de origen de las reseñas elegibles del organizador. La sección tiene carga, error, reintento y actualización propios, sin reiniciar la selección de entradas.
 
-Esta lista exige un evento de origen distinto, anterior por fecha de inicio y finalizado mediante `fechaFin`. **Una reseña publicada sin `fechaFin` puede contar en el puntaje general y no aparecer en Experiencias anteriores.** El formulario móvil no permite cargar el fin; ese dato se gestiona por API. Las pruebas controlan estos escenarios con repositorios y relojes aislados.
+Esta lista muestra reseñas de un evento de origen distinto, del mismo organizador y con fecha de inicio anterior a la del evento consultado. **No exige `fechaFin` ni finalización.** Para probarla, publicar dos eventos con fechas distintas del mismo organizador, comprar en el primero, confirmar el pago simulado, registrar el uso y publicar una reseña. Al abrir el segundo evento, aparece en **Experiencias anteriores** sin modificar fechas por API. Las reseñas del propio evento, de eventos con igual fecha o posteriores y las de otros organizadores quedan excluidas.
 
 El corazón de las tarjetas y del detalle guarda o quita eventos en **Favoritos**. La selección es local, independiente por perfil y se pierde con una recarga completa. Aunque el backend tiene endpoints de favoritos, este recorrido no los utiliza.
 
@@ -95,7 +95,7 @@ El corazón de las tarjetas y del detalle guarda o quita eventos en **Favoritos*
 | C7 | Cancelar compra y consultar reembolso simulado. |
 | C8 | Restricciones de cancelación y seguimiento del organizador. |
 | C9 | Puntuación y comentario desde una compra utilizada. |
-| C10 | Experiencias anteriores del organizador, con selección de eventos finalizados. |
+| C10 | Experiencias de otros eventos anteriores del organizador, sin exigir fecha de fin. |
 | C11 | Ordenamiento por precio, fecha y puntaje. |
 | C12 | Selección de tipo y cantidad, reserva y comprobante de compra. |
 

@@ -182,8 +182,23 @@ test('C10: vacío no inventa reseñas y rechaza respuestas sin identidad, conten
   for (const change of [{ puntuacion: 6 }, { puntuacion: -1 }, { puntuacion: '5' }, { detalle: ' ' },
     { compradorId: 'otro' }, { eventoId: 'otro' }, { comprador: null },
     { evento: { ...previousReview().evento, fecha: 'inválida' } },
-    { evento: { ...previousReview().evento, fechaFin: null } }]) {
+    { evento: { ...previousReview().evento, fechaFin: 'inválida' } },
+    { evento: { ...previousReview().evento, fechaFin: '2026-10-19T20:00:00Z' } }]) {
     assert.throws(() => previousReviewFromDto({ ...previousReview(), ...change }), { code: 'INVALID_RESPONSE' });
+  }
+});
+
+test('C10: acepta fechaFin nula y conserva el contrato cuando hay un fin explícito', async () => {
+  for (const fechaFin of [null, '2026-12-20T22:00:00Z']) {
+    const data = previousReview();
+    data.evento.fechaFin = fechaFin;
+    const [review] = await createCatalogService({ get: async () => [data] }).getPreviousReviews('evento');
+    assert.equal(review.evento.fechaFin, fechaFin);
+    assert.equal(review.puntuacion, 0);
+    assert.equal(review.autor, 'Ana Pérez');
+  }
+  for (const fechaFin of [undefined, 123, '']) {
+    assert.throws(() => previousReviewFromDto({ ...previousReview(), evento: { ...previousReview().evento, fechaFin } }), { code: 'INVALID_RESPONSE' });
   }
 });
 

@@ -31,7 +31,7 @@ export default function PreviousEventReviews({ eventId, organizerName }) {
 
   return <View style={{ gap: 14 }}>
     <Text style={ui.heading}>Experiencias anteriores</Text>
-    <Text style={ui.caption}>Reseñas de eventos anteriores y finalizados de {organizerName}.</Text>
+    <Text style={ui.caption}>Reseñas de eventos anteriores de {organizerName}.</Text>
     {loading ? <View style={[ui.card, ui.row]} accessibilityRole="progressbar">
       <ActivityIndicator color={colors.primary} /><Text style={ui.text}>Cargando reseñas…</Text>
     </View> : error ? <View style={ui.card} accessibilityRole="alert">
@@ -48,7 +48,7 @@ export default function PreviousEventReviews({ eventId, organizerName }) {
         <Text style={ui.caption}>{review.evento.nombre} · {dateLabel(review.evento.fecha, { year: 'numeric' })}</Text>
       </View>) : <View style={ui.card}>
         <Text style={ui.label}>Todavía no hay experiencias anteriores</Text>
-        <Text style={ui.text}>No hay reseñas de eventos anteriores finalizados para esta publicación.</Text>
+        <Text style={ui.text}>No hay reseñas de eventos anteriores para esta publicación.</Text>
       </View>}
       <Button title="Actualizar reseñas" secondary onPress={refresh} />
     </>}
