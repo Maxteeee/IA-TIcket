@@ -1,124 +1,132 @@
-# TP React Native + Express
+# IA Ticket IT
 
-Base en JavaScript para desarrollar el trabajo práctico. El frontend es una app React Native con Expo y el backend es una API Node.js + Express. Ambos módulos están organizados con npm workspaces: se instalan desde la raíz con un solo `npm install`.
+Aplicación móvil para descubrir eventos, comprar entradas y gestionar ventas. Desarrollada como trabajo práctico con React Native y Expo en el frontend, y una API REST con Node.js y Express en el backend.
 
-## Estructura
+El proyecto se ejecuta localmente y utiliza almacenamiento en memoria. Los pagos y reembolsos son simulados; no se procesa dinero real.
+
+## Funcionalidades
+
+| Perfil | Funcionalidades |
+| --- | --- |
+| Comprador | Buscar eventos por texto y categoría; ordenar por fecha, precio y puntaje del organizador; guardar favoritos; seleccionar tipo y cantidad de entradas; consultar compras, estados y días restantes; conversar con el organizador; cancelar compras elegibles y publicar reseñas después del uso. |
+| Organizador | Publicar eventos con distintos tipos de entrada, precios y cupos; consultar ventas y disponibilidad por evento; confirmar pagos simulados; registrar utilización de entradas y responder consultas de compradores. |
+
+La aplicación permite alternar entre **Comprador 1** y **Organizador 1**. El segundo perfil también puede comprar entradas para eventos ajenos. Los permisos se comprueban por rol, propiedad y participación en cada compra.
+
+## Tecnologías y estructura
+
+| Componente | Tecnología |
+| --- | --- |
+| Aplicación móvil | React Native 0.81.5, React 19.1 y Expo SDK 54 |
+| API | Node.js y Express 5 |
+| Lenguaje | JavaScript |
+| Dependencias | npm workspaces y un único `package-lock.json` |
+| Pruebas | `node:test`, aserciones e integración HTTP |
+| Almacenamiento | Repositorios en memoria dentro del proceso del backend |
 
 ```text
 .
 ├── backend/
 │   ├── src/
-│   │   ├── controllers/       # Reciben solicitudes y devuelven respuestas
-│   │   ├── domain/            # Entidades y reglas de negocio
-│   │   ├── services/          # Casos de uso, contratos y permisos
-│   │   ├── repositories/      # Almacenan y consultan datos en memoria
-│   │   ├── routes/            # Definen los endpoints
-│   │   ├── http/              # DTOs de respuesta sin ciclos
-│   │   ├── app.js            # Configuración de Express
-│   │   └── server.js         # Inicio del servidor y puerto
-│   ├── test/
-│   ├── .env.example
-│   └── package.json
+│   │   ├── routes/          # Endpoints HTTP
+│   │   ├── controllers/     # Entrada y salida HTTP
+│   │   ├── services/        # Casos de uso y permisos
+│   │   ├── domain/          # Entidades y reglas de negocio
+│   │   ├── repositories/    # Almacenamiento en memoria
+│   │   ├── http/            # DTOs de respuesta
+│   │   ├── data/            # Perfiles y categorías iniciales
+│   │   ├── app.js           # Configuración de Express
+│   │   └── server.js        # Inicio de la API
+│   └── test/
 ├── frontend/
+│   ├── App.js              # Componente raíz
 │   ├── src/
-│   │   ├── components/        # Componentes visuales reutilizables
-│   │   ├── config/            # Dirección de la API
-│   │   ├── screens/           # Pantallas de la app
-│   │   └── services/          # Solicitudes HTTP al backend
-│   ├── App.js                # Componente raíz
-│   ├── index.js              # Entrada de Expo
-│   ├── app.json              # Configuración de la app
-│   ├── .env.example
-│   └── package.json
-├── .gitignore
-├── .nvmrc
-└── package.json              # Workspaces y comandos comunes
+│   │   ├── screens/        # Pantallas y recorridos
+│   │   ├── components/     # Componentes visuales
+│   │   ├── services/       # Cliente HTTP y servicios
+│   │   ├── session/        # Perfiles y permisos
+│   │   ├── hooks/          # Consultas del catálogo
+│   │   ├── utils/          # Validación y presentación
+│   │   └── config/         # Dirección de la API
+│   └── test/
+├── package.json            # Workspaces y comandos comunes
+├── package-lock.json
+└── .nvmrc
 ```
 
-El backend implementa usuarios, categorías, eventos, compras y reseñas mediante rutas → controladores → servicios → dominio/repositorios. Los tipos de entrada pertenecen al evento; los mensajes e historial, a la compra. El [análisis del dominio y contrato de la API](backend/README.md) explica las operaciones, reglas y límites. Se conserva el ejemplo `items`.
-
-El frontend conecta **C3, C11, C4, C12, C1, C2, C5, C6, C9, C10, C7 y C8: catálogo, publicación, compra, mis compras, ventas, chat, reseñas y cancelación/reembolso simulado** con la API; los favoritos se marcan manualmente sobre eventos reales y se conservan localmente por perfil durante la ejecución de la app. Incluye **Comprador 1** y **Organizador 1**, con un botón superior para alternar y acciones según rol y propiedad. Hay que iniciar el backend y configurar su dirección accesible desde el celular. La compra permite elegir un tipo y cantidad, reserva cupo sin sobreventa y muestra un comprobante real; queda pendiente de pago, sin realizar un cobro. **Compras** muestra registros, estados y días restantes para confirmadas; cada compra tiene su conversación. Una compra utilizada permite puntuar y comentar sin esperar a la finalización del evento ni requerir fechaFin. Desde el comprobante, C7 permite cancelar antes del inicio y devuelve cupo; las compras confirmadas reciben un reembolso del total original. Todos los importes a pagar/reembolsar son simulados, sin dinero real. **Explorar → evento → Experiencias anteriores** muestra reseñas de eventos anteriores finalizados del mismo organizador, con autor, puntuación, comentario y evento de origen. **Organizar → Tus eventos publicados → evento** muestra sus compras y disponibilidad; el propietario puede confirmar pagos simulados, marcar compras como utilizadas, responder en el mismo historial del comprador y consultar la política de cancelación y los reembolsos simulados. Ver [perfiles y recorrido de prueba](frontend/README.md).
+La API sigue el recorrido **ruta → controlador → servicio → dominio y repositorio**. El frontend consume JSON mediante servicios separados de las pantallas. Los DTOs evitan serializar directamente las relaciones entre entidades.
 
 ## Requisitos
 
-- Node.js 24 recomendado (si usás nvm: `nvm use`).
+- Node.js **22.13 o superior**. `.nvmrc` selecciona Node.js **24**: con nvm, ejecutar `nvm use`.
 - npm, incluido con Node.js.
-- Un celular con **Expo Go compatible con Expo SDK 54**.
-- Computadora y celular en la misma red local para acceder a la API (la computadora puede usar Ethernet y el celular Wi-Fi).
+- Un teléfono con **Expo Go compatible con SDK 54**.
+- Acceso a Internet para instalar dependencias y una conexión entre el teléfono y la computadora para consultar la API.
 
-El proyecto usa Expo SDK 54, React 19.1 y React Native 0.81.5, siguiendo la [plantilla oficial de Expo para SDK 54](https://github.com/expo/expo/blob/sdk-54/templates/expo-template-blank/package.json). Se eligió SDK 54 para permitir el uso de Expo Go de la App Store en iPhone; la [documentación de compatibilidad](https://docs.expo.dev/troubleshooting/expo-go-version-mismatch/) indica que esa versión de Expo Go usa SDK 54. En Android, instalá la versión compatible desde [expo.dev/go](https://expo.dev/go). El SDK de Expo Go debe coincidir con el del proyecto.
+En Android, descargar la versión compatible desde [Expo Go para SDK 54](https://expo.dev/go?sdkVersion=54&platform=android&device=true). Para iPhone, comprobar la compatibilidad de la versión disponible siguiendo la [documentación oficial de Expo](https://docs.expo.dev/troubleshooting/expo-go-version-mismatch/). El SDK de Expo Go debe coincidir con el del proyecto.
 
-### Qué instalar en el celular
+El arranque en un teléfono físico con Expo Go no requiere Android Studio ni Xcode. No se necesita una base de datos ni Docker para ejecutar este repositorio.
 
-- **Android físico:** abrir [Expo Go para SDK 54 / Android](https://expo.dev/go?sdkVersion=54&platform=android&device=true), elegir instalación manual e instalar el APK compatible ofrecido por Expo. Si Android pide autorización, permitir la instalación de ese archivo descargado del sitio oficial. Abrir Expo Go y escanear el QR del servidor de desarrollo.
-- **iPhone físico:** instalar Expo Go desde la App Store y comprobar compatibilidad con SDK 54 según [la guía oficial](https://docs.expo.dev/troubleshooting/expo-go-version-mismatch/). La guía consultada el 2026-11-02 permite usar el Expo Go de App Store para SDK 54. Si solicita sesión de Expo, usar la misma cuenta en Expo Go y en la CLI (`npx expo login` desde frontend). Escanear el QR con la cámara.
-- En el teléfono se instala **Expo Go**; no Node.js ni un SDK de Android. Con este recorrido de dispositivo físico no hace falta preparar Android Studio/JDK ni Xcode en la computadora. Emuladores y compilaciones nativas requieren su entorno correspondiente y no forman parte del arranque con Expo Go.
+## Instalación y configuración
 
-La versión del proyecto se comprueba en `frontend/package.json` (`expo: ~54.0.37`). Un error de incompatibilidad de SDK se resuelve instalando el Expo Go correspondiente; no cambiar automáticamente las versiones de Expo/React Native del proyecto.
-
-## Instalación
-
-Desde la raíz del proyecto:
+Desde la raíz:
 
 ```bash
-npm install
+npm ci
+```
+
+Crear los archivos locales a partir de las plantillas, sin sobrescribir una configuración existente. En Bash, Linux, macOS o WSL:
+
+```bash
 cp -n backend/.env.example backend/.env
 cp -n frontend/.env.example frontend/.env
 ```
 
-La instalación requiere acceso a `registry.npmjs.org`. El proyecto incluye `package-lock.json`; conservá sus actualizaciones en Git.
+En Windows también se pueden copiar las plantillas desde el explorador o el editor, quitando el sufijo `.example`.
 
-Estos comandos son para Bash/Linux/macOS/WSL. `cp -n` prepara los archivos locales solo si no existen, conservando una configuración previa. Instalar dependencias desde la raíz instala ambos workspaces; no hace falta instalar una CLI global de Expo.
-
-## Comandos de cada módulo
-
-El backend ejecuta la API y mantiene los datos en memoria. Expo/Metro sirve el frontend que abre Expo Go. Son **dos procesos**, en terminales separadas; ambos deben permanecer activos.
-
-| Directorio | Uso | Comando |
+| Archivo | Variable | Uso |
 | --- | --- | --- |
-| Raíz | API con recarga al editar | `npm run backend` |
-| backend | API con recarga, equivalente | `npm run dev` |
-| backend | API sin recarga automática | `npm start` |
-| Raíz | Frontend por LAN | `npm run frontend` |
-| frontend | Frontend por LAN, equivalente | `npm start` |
-| frontend | Expo Go con LAN explícita | `npx expo start --go --lan` |
-| frontend | Expo Go con túnel (recorrido usado en este entorno WSL) | `npx expo start --go --tunnel` |
-| frontend | Mismo túnel limpiando caché | `npx expo start --go --tunnel --clear` |
-| Raíz | Pruebas del backend | `npm test --workspace=backend` |
-| Raíz | Pruebas del frontend y sus integraciones HTTP | `npm test --workspace=frontend` |
-| frontend | Comprobar dependencias del SDK, puede consultar la red | `npm run check` |
+| `backend/.env` | `PORT` | Puerto de la API; por defecto, `3000`. |
+| `backend/.env` | `PUBLIC_API_URL` | Opcional: dirección que se informa al iniciar. No configura el acceso de red. |
+| `frontend/.env` | `EXPO_PUBLIC_API_URL` | URL de la API accesible desde el teléfono, con el sufijo `/api`. |
 
-`npm test` desde la raíz ejecuta **solo backend**. Para ver todos los casos individualmente en Node 24 se puede agregar `-- --test-isolation=none` a los comandos de pruebas. Los scripts `npm run android` y `npm run ios` de frontend abren el entorno Android/iOS instalado en la computadora; no son necesarios para escanear el QR en el celular.
+En `frontend/.env`, reemplazar `IP_DE_TU_PC` por la dirección IPv4 de la computadora en la red local:
 
-No iniciar dos backends sobre el puerto 3000. Detener el servidor con Ctrl+C en su terminal; reiniciar la API o editarla en modo watch borra sus datos. Para conservarlos durante pruebas de UI se puede usar `npm start` desde backend y recargar únicamente Expo/app.
+```dotenv
+EXPO_PUBLIC_API_URL=http://IP_DE_TU_PC:3000/api
+```
 
-## Ejecutar el backend
+`IP_DE_TU_PC` es un marcador: debe reemplazarse antes de usar la aplicación. En un teléfono, `localhost` se refiere al propio teléfono. Si la API se ejecuta en WSL, seguir la [configuración de acceso desde la red local](backend/README.md#acceso-desde-el-celular-con-wsl).
 
-En una terminal, desde la raíz:
+Los archivos `.env` reales están excluidos de Git. Las variables `EXPO_PUBLIC_` forman parte de la aplicación cliente y no deben contener secretos.
+
+## Ejecución local
+
+Mantener **dos terminales abiertas**: una para la API y otra para Expo/Metro.
+
+### 1. Iniciar la API
+
+Desde la raíz:
 
 ```bash
 npm run backend
 ```
 
-El arranque no precarga eventos, compras, mensajes, reseñas ni favoritos. Para probar C3/C11 y los demás casos, crear eventos desde Organizador 1 y operar como Comprador 1 según [frontend/README.md](frontend/README.md). Los datos completos de ejemplo están aislados en las carpetas de pruebas y nunca se cargan en la app.
+La API escucha en `0.0.0.0:3000` y muestra sus direcciones al arrancar. Comprobar desde la computadora:
 
-Se conservan únicamente Comprador 1, Organizador 1 y las cinco categorías base, según lo acordado. Podés publicar tus propios eventos desde Organizar. Se retiraron los comandos/modos demo; una variable SEED_DEMO antigua no carga datos de negocio.
-
-El servidor escucha en todas las interfaces en el puerto 3000 y muestra las direcciones de red de la computadora. Abrí `http://localhost:3000/api/health` en la computadora para comprobarlo.
-
-Si el backend corre en WSL, la dirección marcada **API interna WSL** puede no ser accesible desde el celular. Usá la IP de Windows y configurá el reenvío del puerto 3000 según [la guía de WSL](backend/README.md#acceso-desde-el-celular-con-wsl). `PUBLIC_API_URL` en backend/.env permite mostrar esa dirección al iniciar; no configura la red por sí sola.
-
-## Conectar el celular y ejecutar el frontend
-
-La API usa el puerto **3000** y Expo/Metro normalmente **8081**. En WSL usar la IPv4 de Windows para la API y completar primero el reenvío indicado en la guía anterior. Para evitar la limitación de LAN de Metro en WSL, abrir otra terminal en frontend y ejecutar `npx expo start --go --tunnel`; el backend sigue levantándose con su comando habitual.
-
-Editá `frontend/.env` con la IP de tu computadora que muestra el backend, por ejemplo:
-
-```dotenv
-EXPO_PUBLIC_API_URL=http://192.168.1.100:3000/api
+```bash
+curl http://localhost:3000/api/health
 ```
 
-En un celular físico, `localhost` apunta al propio celular. Por eso hay que usar la IP de la computadora. Para el emulador estándar de Android, se puede usar `http://10.0.2.2:3000/api`; para el simulador de iOS ejecutado en la misma Mac que el backend, `http://localhost:3000/api`.
+Respuesta esperada:
+
+```json
+{"status":"ok","message":"Backend conectado"}
+```
+
+El modo de desarrollo usa `node --watch`. **Reiniciar la API o editar código del backend en ese modo elimina sus datos en memoria.** Para realizar una demostración sin recarga automática, usar `npm start` desde `backend/` en lugar del comando anterior.
+
+### 2. Iniciar la aplicación móvil
 
 En otra terminal, desde la raíz:
 
@@ -126,56 +134,69 @@ En otra terminal, desde la raíz:
 npm run frontend
 ```
 
-Escaneá el QR con Expo Go en Android o con la cámara en iPhone. Si Expo Go solicita iniciar sesión, usá la misma cuenta en Expo Go y en la CLI (`npx expo login`, ejecutado desde `frontend/`). Si cambiás `.env`, reiniciá Expo y recargá la app.
+Escanear el QR con Expo Go en Android o con la cámara en iPhone. Para el modo túnel, ejecutar desde `frontend/`:
 
-Podés comprobar la conexión abriendo `http://IP_DE_TU_PC:3000/api/health` desde el navegador del celular. Si no responde, revisá la IP, la red y el acceso al puerto 3000 en el firewall. Expo usa también el puerto 8081 para servir la app. Un túnel de Expo solo expone Metro; la API necesita seguir siendo accesible desde el celular.
+```bash
+npx expo start --go --tunnel
+```
 
-### Verificar conexión y resolver errores de arranque
+El túnel de Expo permite acceder a Metro, pero **no expone la API del backend**. El teléfono debe poder abrir `http://IP_DE_TU_PC:3000/api/health` por separado. Para la configuración por LAN, conectar ambos dispositivos a la misma red; la computadora puede usar Ethernet y el teléfono Wi-Fi.
 
-1. En la computadora, abrir `http://localhost:3000/api/health`: debe devolver `{"status":"ok","message":"Backend conectado"}`. Si falla, revisar la terminal del backend y que esté ejecutándose.
-2. En el celular, abrir `http://IP_DE_TU_PC:3000/api/health`. Usar `http://` con **dos barras**, una IP real (no escribir el texto IP_DE_TU_PC) y el puerto. En WSL usar la IP de Windows, no la dirección marcada API interna WSL. Si solo funciona localhost, revisar reenvío/firewall según la guía WSL. Confirmar que ambos dispositivos compartan red y que la red no aísle clientes.
-3. Abrir `/api/categorias` en esa misma dirección: el inicio normal prepara cinco categorías y los dos perfiles, sin necesitar crear categorías en la app.
-4. Configurar `EXPO_PUBLIC_API_URL=http://IP_DE_TU_PC:3000/api` en frontend/.env. `PUBLIC_API_URL` en backend/.env puede usar el mismo valor para informar la URL; por sí sola no habilita el acceso ni configura el frontend.
-5. Abrir la app por el QR y recargarla. Si sigue usando una dirección anterior, detener **solo Expo** y usar el comando con `--clear` de la tabla. El túnel de Expo no soluciona el acceso a la API y un QR que abre la app no demuestra conexión con el backend.
-6. Como Organizador 1, publicar un evento futuro; consultarlo por `/api/eventos` desde el navegador. Como Comprador 1, comprar y comprobar desde Organizar que coincidan venta y cupo. La app muestra únicamente los recorridos conectados, sin accesos a datos de ejemplo.
+Si se modifica `frontend/.env`, reiniciar Expo y recargar la app. La [guía de Expo CLI](https://docs.expo.dev/more/expo-cli/#tunneling) explica los requisitos del modo túnel.
 
-Si el error menciona un SDK incompatible, revisar la instalación de Expo Go; si la app abre pero no carga categorías/eventos, comprobar la URL de la API. Si aparece EADDRINUSE, ya hay otro proceso escuchando en ese puerto. Los pasos para confirmar pagos simulados, utilizar entradas y publicar reseñas desde la app están en [frontend/README.md](frontend/README.md).
+## Primer recorrido
 
-## Persistencia en memoria
+El backend prepara únicamente dos perfiles y cinco categorías: Música, Teatro, Festivales, Conferencias y Deportes. **No hay eventos, compras, mensajes ni reseñas precargados.**
 
-Los datos de la API se guardan dentro del proceso de Node.js. Reiniciar el backend borra todos los datos, incluso los reinicios automáticos de `node --watch` al editar código. No se utiliza una base de datos, archivos ni AsyncStorage. La maqueta mantiene su propio estado en React y se reinicia al recargarla.
+1. Alternar a **Organizador 1 → Organizar → Crear un evento**. Publicar un evento futuro con General a `$1000`, cupo `3`, y VIP a `$2500`, cupo `2`.
+2. Como **Comprador 1**, buscarlo en **Explorar**, seleccionar dos General y confirmar la compra. El comprobante debe mostrar `$2000` y estado **Pendiente de pago**.
+3. Volver al evento: General debe tener `1` disponible y VIP conservar `2`.
+4. Como **Organizador 1 → Organizar → evento**, localizar la compra y elegir **Confirmar pago simulado**. Aceptar el aviso. Como comprador, consultar la compra confirmada y sus días restantes.
+5. Desde esa venta, el organizador puede elegir **Marcar como utilizada**. Después, el comprador puede publicar una reseña numérica con comentario.
+6. Para probar la cancelación y el reembolso simulado, crear otra compra, confirmarla y cancelarla como comprador antes del inicio del evento. Una compra utilizada no admite cancelación.
 
-## Endpoints de ejemplo
+El chat se abre desde el comprobante del comprador o desde la venta del organizador. Ambos consultan la misma conversación. Ver la [guía funcional del frontend](frontend/README.md) para los recorridos completos.
 
-| Método | Ruta | Descripción |
+## Reglas y límites del alcance actual
+
+- La compra reserva cupo al quedar pendiente. Confirmarla o utilizarla no vuelve a descontar entradas. Las reservas pendientes no tienen vencimiento automático.
+- Solo el organizador del evento confirma el pago simulado y registra el uso. La confirmación exige que el evento no haya comenzado. El uso afecta a todas las entradas de la compra.
+- Cancelar una pendiente devuelve cupo sin reembolso; cancelar una confirmada devuelve cupo y registra el reembolso simulado del total original. Ambas requieren que el evento no haya comenzado.
+- Para reseñar se exige una compra propia **UTILIZADA**, sin requerir `fechaFin`. Se admite más de una reseña por compra; los reintentos de una misma publicación no la duplican.
+- **Experiencias anteriores** selecciona reseñas de eventos anteriores y finalizados del mismo organizador. Conserva la condición `fechaFin` alcanzada; el formulario móvil no permite cargar ese campo. Es una condición distinta de la habilitación para publicar una reseña.
+- Los perfiles son simulados y la API usa `X-Usuario-Id` como identidad de desarrollo. No hay login ni autenticación real.
+- Los datos del backend se pierden al reiniciar su proceso. Los favoritos y filtros viven en el cliente por perfil; los favoritos no se sincronizan con la API y se pierden al recargar la app.
+- El chat se actualiza al abrirlo, solicitar actualización o volver del segundo plano. No incorpora recepción en tiempo real ni notificaciones.
+
+## Comandos disponibles
+
+| Desde | Comando | Descripción |
 | --- | --- | --- |
-| GET | `/api/health` | Verificar que el backend responde |
-| GET | `/api/items` | Listar los elementos en memoria |
-| POST | `/api/items` | Crear un elemento con `{"name":"Ejemplo"}` |
+| Raíz | `npm run backend` | API con recarga automática. |
+| Raíz | `npm run frontend` | Expo por LAN. |
+| `backend/` | `npm start` | API sin recarga automática. |
+| `frontend/` | `npx expo start --go --tunnel --clear` | Expo por túnel limpiando caché. |
+| Raíz | `npm test --workspace=backend` | Pruebas del backend. |
+| Raíz | `npm test --workspace=frontend` | Pruebas del frontend e integraciones HTTP. |
+| Raíz | `npm run check --workspace=frontend` | Comprobar dependencias de Expo; puede consultar la red. |
 
-El nombre del ejemplo debe tener entre 1 y 100 caracteres. Los endpoints del dominio, incluidos compra, ventas, favoritos, chat y reseñas, están documentados en [backend/README.md](backend/README.md). Las operaciones personales utilizan el encabezado de desarrollo `X-Usuario-Id`, sin autenticación real.
+`npm test` desde la raíz ejecuta **solo las pruebas del backend**. Los scripts `android` e `ios` del frontend abren el entorno correspondiente instalado en la computadora; no son necesarios para escanear el QR en un teléfono físico.
 
-## Verificaciones
+Las pruebas utilizan instancias aisladas y puertos locales temporales. Cubren reglas de negocio, permisos, contratos, cupos, estados, cancelaciones, chat, reseñas y recuperación de solicitudes. La compilación y las pruebas automatizadas complementan la revisión visual en el teléfono; no la sustituyen.
 
-```bash
-npm test
-npm test --workspace=frontend
-npm run check --workspace=frontend
-```
+## Solución de problemas
 
-Las pruebas usan el runner de Node; las de HTTP requieren Express instalado y abren puertos locales temporales. El chequeo de Expo requiere instalar las dependencias y puede consultar la red. Para conectar el celular a la API hay que configurar una dirección accesible desde su red; el túnel de Expo solo transporta Metro.
+| Síntoma | Comprobación |
+| --- | --- |
+| La app abre pero no carga eventos o categorías | Abrir `/api/health` y `/api/categorias` desde el teléfono; revisar la URL de la API, la IP y el acceso al puerto `3000`. |
+| El catálogo está vacío | Crear el primer evento como Organizador 1. Los eventos ya iniciados no aparecen en el catálogo predeterminado. |
+| Funciona `localhost` en la PC, pero falla desde el teléfono | Comprobar la red local, el firewall y, si corresponde, el reenvío de WSL. |
+| Error de SDK incompatible | Instalar Expo Go compatible con SDK 54 y consultar la guía oficial; no actualizar dependencias sin revisar su compatibilidad. |
+| La app conserva una URL anterior | Reiniciar Expo y usar `--clear` si hace falta; luego recargar la app. |
+| `EADDRINUSE` | Ya hay un proceso usando el puerto. Conservar la instancia que corresponda o detenerla antes de iniciar otra. |
+| Desaparecieron los datos tras editar el backend | El proceso se reinició y su almacenamiento en memoria se vació. |
 
-## Cómo se inicializa un proyecto así
+## Documentación de los módulos
 
-Los comandos habituales para crear los módulos desde cero serían:
-
-```bash
-# Frontend React Native con la plantilla oficial de Expo.
-npx create-expo-app@latest frontend --template expo-template-blank@sdk-54
-
-# Backend: dentro de una carpeta backend, inicializar e instalar Express.
-npm init -y
-npm install express
-```
-
-Los archivos de inicialización ya están creados en esta carpeta; para seguir, usá los pasos de instalación y ejecución anteriores.
+- [Backend: arquitectura, reglas, API y acceso con WSL](backend/README.md).
+- [Frontend: perfiles, recorridos y relación con el código](frontend/README.md).
